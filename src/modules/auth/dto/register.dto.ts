@@ -1,33 +1,54 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { VehicleType } from '../../drivers/entities/driver.entity';
 
 export class RegisterDriverDto {
-  @ApiProperty({ example: 'Carlos Mendoza' })
+  @ApiProperty({
+    description: 'Nombre y apellido completos del repartidor',
+    example: 'Carlos Mendoza',
+  })
   @IsString()
   @IsNotEmpty()
   fullName: string;
 
-  @ApiProperty({ example: '+59170000000' })
+  @ApiProperty({
+    description: 'Número de teléfono móvil para contacto y WhatsApp',
+    example: '+59170012345',
+  })
   @IsString()
   @IsNotEmpty()
   phone: string;
 
-  @ApiProperty({ example: 'carlos.driver@dsp.com' })
+  @ApiProperty({
+    description: 'Correo electrónico único para el inicio de sesión',
+    example: 'carlos.mendoza@dsp.com',
+  })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: 'secret123' })
+  @ApiProperty({
+    description: 'Contraseña segura de acceso a la app móvil (mínimo 6 caracteres)',
+    example: 'segura2026',
+  })
   @IsString()
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ enum: VehicleType, default: VehicleType.MOTORCYCLE })
+  @ApiProperty({
+    description: 'Tipo de vehículo utilizado para las entregas',
+    enum: VehicleType,
+    default: VehicleType.MOTORCYCLE,
+    example: VehicleType.MOTORCYCLE,
+  })
   @IsEnum(VehicleType)
   vehicleType: VehicleType;
 
-  @ApiProperty({ example: '1234-XYZ', required: false })
+  @ApiProperty({
+    description: 'Placa o número de registro del vehículo',
+    example: '4589-KLT',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   vehiclePlate?: string;

@@ -23,7 +23,7 @@ export class QuotesService {
     );
 
     if (distanceKm > 50) {
-      throw new BadRequestException('Distance exceeds maximum allowed delivery radius (50 km)');
+      throw new BadRequestException('La distancia calculada supera el radio máximo permitido de entrega (50 km)');
     }
 
     const durationMinutes = GeoUtil.estimateDurationMinutes(distanceKm);
@@ -66,7 +66,7 @@ export class QuotesService {
   async getQuoteById(quoteId: string): Promise<Quote> {
     const quote = await this.quoteRepository.findOne({ where: { id: quoteId } });
     if (!quote) {
-      throw new NotFoundException('Quote not found');
+      throw new NotFoundException('Cotización no encontrada');
     }
     return quote;
   }
@@ -74,7 +74,7 @@ export class QuotesService {
   async validateQuoteActive(quoteId: string): Promise<Quote> {
     const quote = await this.getQuoteById(quoteId);
     if (new Date() > new Date(quote.expiresAt)) {
-      throw new BadRequestException('Quote has expired. Please generate a new quote.');
+      throw new BadRequestException('La cotización ha expirado (vigencia de 15 min). Por favor genere una nueva cotización.');
     }
     return quote;
   }

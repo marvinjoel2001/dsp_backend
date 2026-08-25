@@ -74,7 +74,7 @@ export class OrdersService {
       price = Number(tempQuote.totalPrice);
       driverPayout = Number(tempQuote.driverPayout);
     } else {
-      throw new BadRequestException('Either quoteId or full pickup/dropoff coordinates are required');
+      throw new BadRequestException('Se requiere quoteId previo o las coordenadas completas de recogida y entrega (pickup y dropoff).');
     }
 
     const orderId = `ord_${crypto.randomBytes(4).toString('hex')}`;
@@ -100,7 +100,7 @@ export class OrdersService {
 
     const savedOrder = await this.orderRepo.save(order);
 
-    // Create Initial Audit Log
+    // Guardar auditoría inicial
     await this.logRepo.save(
       this.logRepo.create({
         orderId: savedOrder.id,
@@ -111,7 +111,7 @@ export class OrdersService {
       }),
     );
 
-    // Trigger Outbound Webhook for Order Created
+    // Disparar Webhook order.created
     await this.webhooksService.enqueueWebhookEvent(tenantId, savedOrder.id, 'order.created', {
       order_id: savedOrder.id,
       merchant_reference: savedOrder.merchantReference,
@@ -121,9 +121,9 @@ export class OrdersService {
       tracking_url: `https://dsp.openplatform.com/track/${savedOrder.trackingToken}`,
     });
 
-    // Automatically trigger proximity matchmaking
+    // Iniciar matchmaking geoespacial en background
     this.dispatchService.matchAndDispatch(savedOrder.id).catch((err) => {
-      this.logger.error(`Error auto-dispatching order ${savedOrder.id}: ${err.message}`);
+      this.logger.error(`Error en auto-despacho de orden ${savedOrder.id}: ${err.message}`);
     });
 
     return savedOrder;
@@ -136,7 +136,7 @@ export class OrdersService {
   ) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) {
-      throw new NotFoundException(`Order ${orderId} not found`);
+      throw new NotFoundException(`La orden #${orderId} no fue encontrada.`);
     }
 
     const previousStatus = order.status;
@@ -145,7 +145,7 @@ export class OrdersService {
     if (dto.proofPhotoUrl) order.proofPhotoUrl = dto.proofPhotoUrl;
     if (dto.signatureSvg) order.signatureSvg = dto.signatureSvg;
 
-    // Handle DELIVERED event: Payout to driver wallet
+    // Acreditación en la billetera del conductor al entregar
     if (dto.status === OrderStatus.DELIVERED && order.driverId) {
       const driver = await this.driverRepo.findOne({ where: { id: order.driverId } });
       if (driver) {
@@ -158,7 +158,7 @@ export class OrdersService {
             amount: order.driverPayout,
             type: 'PAYOUT',
             referenceId: order.id,
-            description: `Delivery payout for order #${order.id}`,
+            description: `Pago por entrega de orden #${order.id}`,
           }),
         );
       }
@@ -166,7 +166,7 @@ export class OrdersService {
 
     const saved = await this.orderRepo.save(order);
 
-    // Save Audit Trail
+    // Registro de auditoría inmutable
     await this.logRepo.save(
       this.logRepo.create({
         orderId: saved.id,
@@ -177,7 +177,7 @@ export class OrdersService {
       }),
     );
 
-    // Determine Webhook Event Name
+    // Enviar Webhook correspondiente
     const eventNameMap: Record<string, string> = {
       [OrderStatus.ARRIVED_AT_PICKUP]: 'order.arrived_pickup',
       [OrderStatus.IN_TRANSIT]: 'order.in_transit',
@@ -223,7 +223,7 @@ export class OrdersService {
 
   async getOrderById(id: string) {
     const order = await this.orderRepo.findOne({ where: { id } });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException('Orden no encontrada');
 
     const logs = await this.logRepo.find({
       where: { orderId: id },
@@ -240,7 +240,7 @@ export class OrdersService {
 
   async getPublicTracking(trackingToken: string) {
     const order = await this.orderRepo.findOne({ where: { trackingToken } });
-    if (!order) throw new NotFoundException('Tracking information not found');
+    if (!order) throw new NotFoundException('Información de seguimiento no encontrada');
 
     let driver: Partial<Driver> | null = null;
     if (order.driverId) {

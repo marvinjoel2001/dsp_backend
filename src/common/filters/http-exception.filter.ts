@@ -22,21 +22,34 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+    let mensaje = 'Error interno en el servidor';
+    let detalles: any = null;
+
+    if (exception instanceof HttpException) {
+      const res = exception.getResponse();
+      if (typeof res === 'string') {
+        mensaje = res;
+      } else if (typeof res === 'object' && res !== null) {
+        const obj = res as Record<string, any>;
+        mensaje = obj.message || obj.error || 'Error en la solicitud';
+        detalles = Array.isArray(obj.message) ? obj.message : obj;
+      }
+    } else if (exception instanceof Error) {
+      mensaje = exception.message || 'Error interno no controlado';
+    }
 
     this.logger.error(
-      `[${request.method}] ${request.url} - Status: ${status} - Error: ${JSON.stringify(message)}`,
+      `[${request.method}] ${request.url} - Status: ${status} - Error: ${JSON.stringify(mensaje)}`,
       exception instanceof Error ? exception.stack : '',
     );
 
     response.status(status).json({
       statusCode: status,
+      exito: false,
+      mensaje: Array.isArray(mensaje) ? mensaje.join(', ') : mensaje,
+      detalles: detalles && Array.isArray(detalles) ? detalles : undefined,
+      ruta: request.url,
       timestamp: new Date().toISOString(),
-      path: request.url,
-      error: typeof message === 'object' ? message : { message },
     });
   }
 }

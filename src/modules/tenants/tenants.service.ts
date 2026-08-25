@@ -16,7 +16,7 @@ export class TenantsService {
   async createTenant(dto: CreateTenantDto) {
     const existing = await this.tenantRepository.findOne({ where: { email: dto.email } });
     if (existing) {
-      throw new ConflictException('Tenant with this email already exists');
+      throw new ConflictException('Ya existe un comercio registrado con este correo electrónico.');
     }
 
     const { rawKey, keyHash, maskedKey } = CryptoUtil.generateApiKey('dsp_live_');
@@ -36,7 +36,7 @@ export class TenantsService {
 
     return {
       ...saved,
-      apiKeyRaw: rawKey, // Displayed ONLY once upon creation!
+      apiKeyRaw: rawKey, // Se muestra una única vez tras la creación
     };
   }
 
@@ -49,7 +49,7 @@ export class TenantsService {
   async getTenantById(id: string) {
     const tenant = await this.tenantRepository.findOne({ where: { id } });
     if (!tenant) {
-      throw new NotFoundException('Tenant not found');
+      throw new NotFoundException('Comercio no encontrado.');
     }
     return tenant;
   }
@@ -66,7 +66,7 @@ export class TenantsService {
       id: tenant.id,
       name: tenant.name,
       apiKeyMasked: maskedKey,
-      apiKeyRaw: rawKey, // Show once
+      apiKeyRaw: rawKey,
     };
   }
 

@@ -21,7 +21,7 @@ export class AuthService {
       where: [{ email: dto.email }, { phone: dto.phone }],
     });
     if (existing) {
-      throw new ConflictException('Driver with this email or phone already exists');
+      throw new ConflictException('Ya existe un conductor registrado con este correo o teléfono.');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -51,21 +51,21 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    // Check if it's admin master login
+    // Verificación de credenciales de Super Administrador Master
     if (dto.email === 'admin@dsp.com' && dto.password === 'admin123') {
       const token = this.generateToken({
         sub: 'admin-master-id',
         email: dto.email,
-        fullName: 'DSP Super Administrator',
+        fullName: 'Administrador Master OpenDSP',
         role: UserRole.ADMIN,
       });
       return {
-        user: { id: 'admin-master-id', email: dto.email, fullName: 'DSP Super Admin', role: UserRole.ADMIN },
+        user: { id: 'admin-master-id', email: dto.email, fullName: 'Administrador Master OpenDSP', role: UserRole.ADMIN },
         accessToken: token,
       };
     }
 
-    // Check driver login
+    // Verificación de conductor
     const driver = await this.driverRepository
       .createQueryBuilder('driver')
       .addSelect('driver.password')
@@ -73,12 +73,12 @@ export class AuthService {
       .getOne();
 
     if (!driver || !driver.password) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Correo electrónico o contraseña incorrectos.');
     }
 
     const isMatch = await bcrypt.compare(dto.password, driver.password);
     if (!isMatch) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Correo electrónico o contraseña incorrectos.');
     }
 
     const token = this.generateToken({

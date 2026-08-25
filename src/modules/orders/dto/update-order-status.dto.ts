@@ -3,27 +3,47 @@ import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from '../entities/order.entity';
 
 export class UpdateOrderStatusDto {
-  @ApiProperty({ enum: OrderStatus, example: OrderStatus.ARRIVED_AT_PICKUP })
+  @ApiProperty({
+    description: 'Nuevo estado de la orden en la máquina de estados',
+    enum: OrderStatus,
+    example: OrderStatus.ARRIVED_AT_PICKUP,
+  })
   @IsEnum(OrderStatus)
   @IsNotEmpty()
   status: OrderStatus;
 
-  @ApiProperty({ example: 'c8716b1e-6240-4b2a-8c01-7faef83151cf', required: false })
+  @ApiProperty({
+    description: 'UUID del conductor que ejecuta la transición',
+    example: 'c8716b1e-6240-4b2a-8c01-7faef83151cf',
+    required: false,
+  })
   @IsOptional()
   @IsUUID()
   driverId?: string;
 
-  @ApiProperty({ example: 'https://storage.dsp.com/proofs/photo_123.jpg', required: false })
+  @ApiProperty({
+    description: 'URL de la fotografía como comprobante de entrega (POD)',
+    example: 'https://storage.midsp.com/proofs/entrega_9941.jpg',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   proofPhotoUrl?: string;
 
-  @ApiProperty({ example: '<svg>...</svg>', required: false })
+  @ApiProperty({
+    description: 'Firma digital en formato SVG o Base64 del receptor',
+    example: '<svg xmlns="http://www.w3.org/2000/svg">...</svg>',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   signatureSvg?: string;
 
-  @ApiProperty({ example: 'Delivered to recipient in person', required: false })
+  @ApiProperty({
+    description: 'Comentarios o notas de la entrega',
+    example: 'Entregado a cliente en persona con conformidad',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   notes?: string;

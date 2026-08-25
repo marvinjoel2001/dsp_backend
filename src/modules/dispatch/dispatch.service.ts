@@ -28,13 +28,10 @@ export class DispatchService {
     private readonly webhooksService: WebhooksService,
   ) {}
 
-  /**
-   * Runs matchmaking search for an order and notifies candidate driver
-   */
   async matchAndDispatch(orderId: string): Promise<{ matched: boolean; candidatesCount: number }> {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) {
-      throw new NotFoundException(`Order ${orderId} not found`);
+      throw new NotFoundException(`La orden #${orderId} no fue encontrada.`);
     }
 
     if (order.status !== OrderStatus.CREATED && order.status !== OrderStatus.SEARCHING_DRIVER) {
@@ -44,63 +41,58 @@ export class DispatchService {
     order.status = OrderStatus.SEARCHING_DRIVER;
     await this.orderRepo.save(order);
 
-    // 1. Find nearby online drivers via Redis GEO
+    // Buscar conductores online cercanos mediante Redis GEO (radio de 5km)
     const candidates = await this.trackingService.findNearbyDrivers(
       order.pickupLat,
       order.pickupLng,
-      5.0, // 5km search radius
+      5.0,
     );
 
-    this.logger.log(`Found ${candidates.length} online drivers within 5km for order ${orderId}`);
+    this.logger.log(`Se encontraron ${candidates.length} conductores en línea dentro de 5km para la orden ${orderId}`);
 
     if (candidates.length === 0) {
       return { matched: false, candidatesCount: 0 };
     }
 
-    // In a full queue, we offer to candidates[0] with a 30-sec redis atomic lock
+    // Bloqueo atómico de 30 segundos en Redis para la oferta
     const topCandidate = candidates[0];
     const redis = this.trackingService.getRedis();
-
-    // Redis SET NX with 30-second TTL prevents multi-driver race conditions
     const lockKey = `order:lock:${orderId}`;
     const acquired = await redis.set(lockKey, topCandidate.driverId, 'EX', 30, 'NX');
 
     if (acquired) {
-      this.logger.log(`Order ${orderId} offered to driver ${topCandidate.driverId} (30s lock)`);
+      this.logger.log(`Orden ${orderId} ofertada al conductor ${topCandidate.driverId} (bloqueo atómico 30s)`);
     }
 
     return { matched: true, candidatesCount: candidates.length };
   }
 
-  /**
-   * Driver accepts an order offer (atomic verification)
-   */
   async acceptOffer(orderId: string, driverId: string) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException('Orden no encontrada');
     }
 
     if (order.status !== OrderStatus.CREATED && order.status !== OrderStatus.SEARCHING_DRIVER) {
-      throw new ConflictException(`Order cannot be accepted. Current status: ${order.status}`);
+      throw new ConflictException(`El pedido no puede ser aceptado. Estado actual: ${order.status}`);
     }
 
     const driver = await this.driverRepo.findOne({ where: { id: driverId } });
     if (!driver || !driver.isActive) {
-      throw new BadRequestException('Driver is not valid or inactive');
+      throw new BadRequestException('El conductor no es válido o está inactivo.');
     }
 
-    // Atomic assignment
+    // Asignación atómica
     const previousStatus = order.status;
     order.driverId = driverId;
     order.status = OrderStatus.ASSIGNED;
     await this.orderRepo.save(order);
 
-    // Release offer lock
+    // Liberar candado de Redis
     const redis = this.trackingService.getRedis();
     await redis.del(`order:lock:${orderId}`);
 
-    // Audit trail
+    // Registro de auditoría
     await this.logRepo.save(
       this.logRepo.create({
         orderId,
@@ -111,7 +103,7 @@ export class DispatchService {
       }),
     );
 
-    // Trigger Outbound Webhook to Merchant
+    // Enviar Webhook order.assigned al comercio
     await this.webhooksService.enqueueWebhookEvent(order.tenantId, order.id, 'order.assigned', {
       order_id: order.id,
       merchant_reference: order.merchantReference,
@@ -130,20 +122,19 @@ export class DispatchService {
 
     return {
       success: true,
+      exito: true,
+      mensaje: 'Pedido asignado y aceptado con éxito.',
       order,
       driver: { id: driver.id, fullName: driver.fullName, phone: driver.phone },
     };
   }
 
-  /**
-   * Manual driver dispatch override by Dispatcher/Admin
-   */
   async manualAssign(orderId: string, driverId: string) {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException('Orden no encontrada');
 
     const driver = await this.driverRepo.findOne({ where: { id: driverId } });
-    if (!driver) throw new NotFoundException('Driver not found');
+    if (!driver) throw new NotFoundException('Conductor no encontrado');
 
     const previousStatus = order.status;
     order.driverId = driverId;

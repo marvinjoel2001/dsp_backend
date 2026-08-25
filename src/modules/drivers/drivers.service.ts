@@ -24,7 +24,7 @@ export class DriversService {
 
   async getDriverById(id: string) {
     const driver = await this.driverRepo.findOne({ where: { id } });
-    if (!driver) throw new NotFoundException('Driver not found');
+    if (!driver) throw new NotFoundException('Conductor no encontrado.');
     return driver;
   }
 
@@ -41,7 +41,6 @@ export class DriversService {
   }
 
   async getAvailableFeedForDriver(driverId: string) {
-    // Return all unassigned orders ready for pickup
     const availableOrders = await this.orderRepo.find({
       where: [
         { status: OrderStatus.CREATED },

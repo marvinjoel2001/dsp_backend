@@ -46,7 +46,7 @@ export class WebhooksService {
   ): Promise<WebhookDelivery | null> {
     const tenant = await this.tenantRepo.findOne({ where: { id: tenantId } });
     if (!tenant || !tenant.webhookUrl) {
-      this.logger.debug(`No webhook URL configured for tenant ${tenantId}, skipping dispatch`);
+      this.logger.debug(`No hay URL de webhook configurada para el comercio ${tenantId}, omitiendo envío.`);
       return null;
     }
 
@@ -70,7 +70,7 @@ export class WebhooksService {
 
     const savedDelivery = await this.deliveryRepo.save(delivery);
 
-    // BullMQ enqueue with exponential backoff retries (1m, 5m, 15m, 1h)
+    // Encolar en BullMQ con política de reintentos exponenciales
     await this.webhooksQueue.add(
       'send-webhook',
       {
@@ -83,13 +83,13 @@ export class WebhooksService {
         attempts: 4,
         backoff: {
           type: 'exponential',
-          delay: 60 * 1000, // 1 minute base exponential backoff
+          delay: 60 * 1000, // 1 minuto base
         },
         removeOnComplete: true,
       },
     );
 
-    this.logger.log(`Enqueued webhook ${eventType} for order ${orderId} -> ${tenant.webhookUrl}`);
+    this.logger.log(`Webhook ${eventType} encolado para orden ${orderId} -> ${tenant.webhookUrl}`);
     return savedDelivery;
   }
 
@@ -107,12 +107,12 @@ export class WebhooksService {
   async retryWebhook(deliveryId: string) {
     const delivery = await this.deliveryRepo.findOne({ where: { id: deliveryId } });
     if (!delivery) {
-      throw new NotFoundException('Webhook delivery record not found');
+      throw new NotFoundException('Registro de entrega de webhook no encontrado.');
     }
 
     const tenant = await this.tenantRepo.findOne({ where: { id: delivery.tenantId } });
     if (!tenant || !tenant.webhookUrl) {
-      throw new NotFoundException('Tenant webhook URL is missing');
+      throw new NotFoundException('El comercio no tiene una URL de webhook configurada.');
     }
 
     delivery.status = WebhookDeliveryStatus.PENDING;
@@ -134,6 +134,10 @@ export class WebhooksService {
       },
     );
 
-    return { message: 'Webhook re-enqueued successfully', deliveryId: delivery.id };
+    return {
+      exito: true,
+      mensaje: 'Webhook reencolado exitosamente para entrega.',
+      deliveryId: delivery.id,
+    };
   }
 }
