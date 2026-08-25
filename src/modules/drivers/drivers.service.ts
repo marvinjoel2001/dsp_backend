@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Driver } from './entities/driver.entity';
+import { Driver, DriverVerificationStatus } from './entities/driver.entity';
 import { DriverWalletTransaction } from './entities/driver-wallet-transaction.entity';
 import { DeliveryOrder, OrderStatus } from '../orders/entities/order.entity';
 import { TrackingService } from '../tracking/tracking.service';
@@ -28,8 +28,45 @@ export class DriversService {
     return driver;
   }
 
+  async updateProfile(id: string, data: Partial<Driver>) {
+    const driver = await this.getDriverById(id);
+    if (data.fullName) driver.fullName = data.fullName;
+    if (data.phone) driver.phone = data.phone;
+    if (data.vehicleType) driver.vehicleType = data.vehicleType;
+    if (data.vehiclePlate) driver.vehiclePlate = data.vehiclePlate;
+    if (data.avatarUrl) driver.avatarUrl = data.avatarUrl;
+    return this.driverRepo.save(driver);
+  }
+
+  async uploadDocuments(id: string, docs: {
+    idCardUrl?: string;
+    licenseUrl?: string;
+    soatUrl?: string;
+    vehiclePhotoUrl?: string;
+  }) {
+    const driver = await this.getDriverById(id);
+    if (docs.idCardUrl) driver.idCardUrl = docs.idCardUrl;
+    if (docs.licenseUrl) driver.licenseUrl = docs.licenseUrl;
+    if (docs.soatUrl) driver.soatUrl = docs.soatUrl;
+    if (docs.vehiclePhotoUrl) driver.vehiclePhotoUrl = docs.vehiclePhotoUrl;
+    driver.verificationStatus = DriverVerificationStatus.PENDING;
+    return this.driverRepo.save(driver);
+  }
+
+  async updateVerificationStatus(id: string, status: DriverVerificationStatus) {
+    const driver = await this.getDriverById(id);
+    driver.verificationStatus = status;
+    return this.driverRepo.save(driver);
+  }
+
   async toggleOnlineStatus(driverId: string, isOnline: boolean) {
     const driver = await this.getDriverById(driverId);
+    
+    // Si no está verificado, no se permite conectar
+    if (isOnline && driver.verificationStatus === DriverVerificationStatus.REJECTED) {
+      throw new BadRequestException('Tu cuenta ha sido rechazada. Revisa tus documentos.');
+    }
+
     driver.isOnline = isOnline;
     const saved = await this.driverRepo.save(driver);
 

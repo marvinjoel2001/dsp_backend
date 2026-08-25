@@ -12,6 +12,12 @@ export enum VehicleType {
   CAR = 'CAR',
 }
 
+export enum DriverVerificationStatus {
+  PENDING = 'pending',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
+}
+
 @Entity('drivers')
 export class Driver {
   @PrimaryGeneratedColumn('uuid')
@@ -38,6 +44,28 @@ export class Driver {
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   vehiclePlate: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatarUrl?: string;
+
+  @Column({
+    type: 'enum',
+    enum: DriverVerificationStatus,
+    default: DriverVerificationStatus.VERIFIED, // Verified by default for test accounts, configurable
+  })
+  verificationStatus: DriverVerificationStatus;
+
+  @Column({ type: 'text', nullable: true })
+  idCardUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
+  licenseUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
+  soatUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
+  vehiclePhotoUrl?: string;
 
   @Column({ type: 'boolean', default: false })
   isOnline: boolean;

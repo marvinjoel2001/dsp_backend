@@ -1,7 +1,8 @@
-import { Controller, Get, Patch, Param, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Patch, Post, Param, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { DriversService } from './drivers.service';
 import { ToggleOnlineDto } from './dto/update-driver-status.dto';
+import { DriverVerificationStatus } from './entities/driver.entity';
 
 @ApiTags('Drivers (Conductores y Flota)')
 @Controller('v1/drivers')
@@ -28,6 +29,33 @@ export class DriversController {
   @ApiResponse({ status: 404, description: 'Conductor no encontrado.' })
   async getDriverById(@Param('id') id: string) {
     return this.driversService.getDriverById(id);
+  }
+
+  @Patch(':id/profile')
+  @ApiOperation({
+    summary: 'Actualizar información personal y vehículo del conductor',
+  })
+  async updateProfile(@Param('id') id: string, @Body() data: any) {
+    return this.driversService.updateProfile(id, data);
+  }
+
+  @Post(':id/documents')
+  @ApiOperation({
+    summary: 'Subir documentos de identidad, licencia, SOAT y vehículo',
+  })
+  async uploadDocuments(@Param('id') id: string, @Body() docs: any) {
+    return this.driversService.uploadDocuments(id, docs);
+  }
+
+  @Patch(':id/verify')
+  @ApiOperation({
+    summary: 'Aprobar o rechazar verificación de conductor (Admin)',
+  })
+  async verifyDriver(
+    @Param('id') id: string,
+    @Body() body: { status: DriverVerificationStatus },
+  ) {
+    return this.driversService.updateVerificationStatus(id, body.status);
   }
 
   @Patch(':id/online')
