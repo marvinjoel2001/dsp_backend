@@ -73,13 +73,33 @@ export class DispatchService {
       throw new NotFoundException('Orden no encontrada');
     }
 
-    if (order.status !== OrderStatus.CREATED && order.status !== OrderStatus.SEARCHING_DRIVER) {
-      throw new ConflictException(`El pedido no puede ser aceptado. Estado actual: ${order.status}`);
-    }
-
     const driver = await this.driverRepo.findOne({ where: { id: driverId } });
     if (!driver || !driver.isActive) {
       throw new BadRequestException('El conductor no es válido o está inactivo.');
+    }
+
+    // Aceptación idempotente: si ya está asignada a este conductor, confirmar de inmediato
+    if (
+      order.driverId === driverId &&
+      (order.status === OrderStatus.ASSIGNED ||
+        order.status === OrderStatus.ARRIVED_AT_PICKUP ||
+        order.status === OrderStatus.IN_TRANSIT)
+    ) {
+      return {
+        success: true,
+        exito: true,
+        mensaje: 'Pedido previamente aceptado por el conductor.',
+        order,
+        driver: { id: driver.id, fullName: driver.fullName, phone: driver.phone },
+      };
+    }
+
+    if (
+      order.status !== OrderStatus.CREATED &&
+      order.status !== OrderStatus.SEARCHING_DRIVER &&
+      order.status !== OrderStatus.ASSIGNED
+    ) {
+      throw new ConflictException(`El pedido no puede ser aceptado. Estado actual: ${order.status}`);
     }
 
     // Asignación atómica

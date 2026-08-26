@@ -124,7 +124,7 @@ Para telemetría en vivo, conectarse al namespace: \`ws://<host>:<port>/tracking
 `;
 
   const config = new DocumentBuilder()
-    .setTitle('OpenDSP Core API — Motor de Despacho y Entregas de Última Milla')
+    .setTitle('Chiringuito DSP API — Motor de Despacho y Entregas de Última Milla')
     .setDescription(swaggerDescription)
     .setVersion('1.0.0')
     .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header', description: 'Clave de API para comercios B2B' }, 'x-api-key')
@@ -140,7 +140,7 @@ Para telemetría en vivo, conectarse al namespace: \`ws://<host>:<port>/tracking
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
-    customSiteTitle: 'Documentación API OpenDSP',
+    customSiteTitle: 'Documentación API Chiringuito DSP',
     customCss: '.swagger-ui .topbar { display: none }',
     swaggerOptions: {
       persistAuthorization: true,
@@ -150,10 +150,10 @@ Para telemetría en vivo, conectarse al namespace: \`ws://<host>:<port>/tracking
   });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  logger.log(`🚀 OpenDSP Core Backend iniciado en http://localhost:${port}`);
-  logger.log(`📚 Documentación Swagger OpenAPI disponible en http://localhost:${port}/api/docs`);
+  logger.log(`🚀 Chiringuito DSP Backend iniciado en http://0.0.0.0:${port}`);
+  logger.log(`📚 Documentación Swagger OpenAPI disponible en http://0.0.0.0:${port}/api/docs`);
   logger.log(`⚡ Gateway de Seguimiento WebSocket activo en namespace /tracking`);
 }
 

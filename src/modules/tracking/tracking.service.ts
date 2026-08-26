@@ -8,16 +8,25 @@ export class TrackingService {
   private redisClient: Redis;
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('REDIS_HOST', 'localhost');
-    const port = parseInt(this.configService.get<string>('REDIS_PORT', '6379'), 10);
-    const password = this.configService.get<string>('REDIS_PASSWORD', '');
+    const redisUrl = this.configService.get<string>('REDIS_URL');
 
-    this.redisClient = new Redis({
-      host,
-      port,
-      password: password || undefined,
-      lazyConnect: true,
-    });
+    if (redisUrl) {
+      this.redisClient = new Redis(redisUrl, {
+        lazyConnect: true,
+        tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+      });
+    } else {
+      const host = this.configService.get<string>('REDIS_HOST', 'localhost');
+      const port = parseInt(this.configService.get<string>('REDIS_PORT', '6379'), 10);
+      const password = this.configService.get<string>('REDIS_PASSWORD', '');
+
+      this.redisClient = new Redis({
+        host,
+        port,
+        password: password || undefined,
+        lazyConnect: true,
+      });
+    }
 
     this.redisClient.connect().catch((err) => {
       this.logger.warn(`Redis connection deferred: ${err.message}`);
