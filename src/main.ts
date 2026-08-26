@@ -127,6 +127,9 @@ Para telemetría en vivo, conectarse al namespace: \`ws://<host>:<port>/tracking
     .setTitle('Chiringuito DSP API — Motor de Despacho y Entregas de Última Milla')
     .setDescription(swaggerDescription)
     .setVersion('1.0.0')
+    .addServer('/', 'Servidor Actual (Render / Cloud / Local)')
+    .addServer('https://dsp-backend-q3mn.onrender.com', 'Producción Render Cloud')
+    .addServer('http://localhost:3000', 'Desarrollo Local')
     .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header', description: 'Clave de API para comercios B2B' }, 'x-api-key')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'Token JWT para Administrador y Repartidores' })
     .addTag('Quotes (Cotizaciones Dinámicas)', 'Cálculo de tarifas en tiempo real basado en distancia, duración y demanda')
@@ -139,7 +142,8 @@ Para telemetría en vivo, conectarse al namespace: \`ws://<host>:<port>/tracking
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
+  
+  const swaggerSetupOptions = {
     customSiteTitle: 'Documentación API Chiringuito DSP',
     customCss: '.swagger-ui .topbar { display: none }',
     swaggerOptions: {
@@ -147,7 +151,10 @@ Para telemetría en vivo, conectarse al namespace: \`ws://<host>:<port>/tracking
       docExpansion: 'list',
       filter: true,
     },
-  });
+  };
+
+  SwaggerModule.setup('api/docs', app, document, swaggerSetupOptions);
+  SwaggerModule.setup('docs', app, document, swaggerSetupOptions);
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
