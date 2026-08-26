@@ -37,23 +37,27 @@ import { AppController } from './app.controller';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const databaseUrl = configService.get<string>('DATABASE_URL');
+        const databaseUrl =
+          configService.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
         const isSsl =
           configService.get<string>('DB_SSL', 'false') === 'true' ||
-          (databaseUrl && !databaseUrl.includes('localhost') && !databaseUrl.includes('127.0.0.1'));
+          (databaseUrl &&
+            !databaseUrl.includes('localhost') &&
+            !databaseUrl.includes('127.0.0.1'));
 
         return {
           type: 'postgres',
           ...(databaseUrl
             ? { url: databaseUrl }
             : {
-                host: configService.get<string>('DB_HOST', 'localhost'),
-                port: parseInt(configService.get<string>('DB_PORT', '5432'), 10),
-                username: configService.get<string>('DB_USERNAME', 'postgres'),
-                password: configService.get<string>('DB_PASSWORD', 'postgres'),
-                database: configService.get<string>('DB_DATABASE', 'open_dsp_db'),
+                host: configService.get<string>('DB_HOST') || process.env.DB_HOST || 'localhost',
+                port: parseInt(configService.get<string>('DB_PORT') || process.env.DB_PORT || '5432', 10),
+                username: configService.get<string>('DB_USERNAME') || process.env.DB_USERNAME || 'postgres',
+                password: configService.get<string>('DB_PASSWORD') || process.env.DB_PASSWORD || 'postgres',
+                database: configService.get<string>('DB_DATABASE') || process.env.DB_DATABASE || 'open_dsp_db',
               }),
           ssl: isSsl ? { rejectUnauthorized: false } : false,
+          extra: isSsl ? { ssl: { rejectUnauthorized: false } } : undefined,
           entities: [
             Tenant,
             Driver,
@@ -74,7 +78,7 @@ import { AppController } from './app.controller';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const redisUrl = configService.get<string>('REDIS_URL');
+        const redisUrl = configService.get<string>('REDIS_URL') || process.env.REDIS_URL;
         if (redisUrl) {
           try {
             const parsed = new URL(redisUrl);
@@ -84,25 +88,23 @@ import { AppController } from './app.controller';
                 port: parseInt(parsed.port || '6379', 10),
                 username: parsed.username || undefined,
                 password: parsed.password || undefined,
+                maxRetriesPerRequest: null,
+                enableReadyCheck: false,
                 tls: parsed.protocol === 'rediss:' ? { rejectUnauthorized: false } : undefined,
               },
             };
           } catch {
-            return {
-              connection: {
-                host: configService.get<string>('REDIS_HOST', 'localhost'),
-                port: parseInt(configService.get<string>('REDIS_PORT', '6379'), 10),
-                password: configService.get<string>('REDIS_PASSWORD', undefined),
-              },
-            };
+            // fallback
           }
         }
 
         return {
           connection: {
-            host: configService.get<string>('REDIS_HOST', 'localhost'),
-            port: parseInt(configService.get<string>('REDIS_PORT', '6379'), 10),
-            password: configService.get<string>('REDIS_PASSWORD', undefined),
+            host: configService.get<string>('REDIS_HOST') || process.env.REDIS_HOST || 'localhost',
+            port: parseInt(configService.get<string>('REDIS_PORT') || process.env.REDIS_PORT || '6379', 10),
+            password: configService.get<string>('REDIS_PASSWORD') || process.env.REDIS_PASSWORD || undefined,
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
           },
         };
       },

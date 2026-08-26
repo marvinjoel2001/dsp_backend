@@ -8,25 +8,34 @@ export class TrackingService {
   private redisClient: Redis;
 
   constructor(private readonly configService: ConfigService) {
-    const redisUrl = this.configService.get<string>('REDIS_URL');
+    const redisUrl = this.configService.get<string>('REDIS_URL') || process.env.REDIS_URL;
 
     if (redisUrl) {
       this.redisClient = new Redis(redisUrl, {
         lazyConnect: true,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
         tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
       });
     } else {
-      const host = this.configService.get<string>('REDIS_HOST', 'localhost');
-      const port = parseInt(this.configService.get<string>('REDIS_PORT', '6379'), 10);
-      const password = this.configService.get<string>('REDIS_PASSWORD', '');
+      const host = this.configService.get<string>('REDIS_HOST') || process.env.REDIS_HOST || 'localhost';
+      const port = parseInt(this.configService.get<string>('REDIS_PORT') || process.env.REDIS_PORT || '6379', 10);
+      const password = this.configService.get<string>('REDIS_PASSWORD') || process.env.REDIS_PASSWORD || '';
 
       this.redisClient = new Redis({
         host,
         port,
         password: password || undefined,
         lazyConnect: true,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
       });
     }
+
+    // Prevenir caídas por eventos de error no capturados en reconexión
+    this.redisClient.on('error', (err) => {
+      this.logger.warn(`Redis tracking warning: ${err.message}`);
+    });
 
     this.redisClient.connect().catch((err) => {
       this.logger.warn(`Redis connection deferred: ${err.message}`);
