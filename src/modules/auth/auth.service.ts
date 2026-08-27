@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Driver } from '../drivers/entities/driver.entity';
+import { Driver, DriverVerificationStatus } from '../drivers/entities/driver.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDriverDto } from './dto/register.dto';
 import { UserRole } from '../../common/decorators/roles.decorator';
@@ -30,8 +30,18 @@ export class AuthService {
       phone: dto.phone,
       email: dto.email,
       password: hashedPassword,
+      ciNumber: dto.ciNumber,
+      homeAddress: dto.homeAddress,
       vehicleType: dto.vehicleType,
       vehiclePlate: dto.vehiclePlate || 'N/A',
+      avatarUrl: dto.avatarUrl,
+      idCardUrl: dto.idCardUrl,
+      licenseUrl: dto.licenseUrl,
+      soatUrl: dto.soatUrl,
+      vehiclePhotoUrl: dto.vehiclePhotoUrl,
+      contractSignatureSvg: dto.contractSignatureSvg,
+      contractAcceptedAt: dto.contractAcceptedAt || new Date(),
+      verificationStatus: DriverVerificationStatus.PENDING,
       isOnline: false,
       isActive: true,
       rating: 5.0,

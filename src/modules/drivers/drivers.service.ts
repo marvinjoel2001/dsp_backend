@@ -62,9 +62,14 @@ export class DriversService {
   async toggleOnlineStatus(driverId: string, isOnline: boolean) {
     const driver = await this.getDriverById(driverId);
     
-    // Si no está verificado, no se permite conectar
-    if (isOnline && driver.verificationStatus === DriverVerificationStatus.REJECTED) {
-      throw new BadRequestException('Tu cuenta ha sido rechazada. Revisa tus documentos.');
+    // Si no está verificado, no se permite conectar ni recibir órdenes
+    if (isOnline && driver.verificationStatus !== DriverVerificationStatus.VERIFIED) {
+      if (driver.verificationStatus === DriverVerificationStatus.REJECTED) {
+        throw new BadRequestException('Tu cuenta ha sido rechazada por el equipo de operaciones. Revisa tus documentos.');
+      }
+      throw new BadRequestException(
+        'Tu cuenta está en proceso de validación por la central (usualmente tarda unos minutos). No puedes recibir órdenes hasta ser aprobado.',
+      );
     }
 
     driver.isOnline = isOnline;

@@ -35,6 +35,12 @@ export class Driver {
   @Column({ type: 'varchar', length: 255, select: false })
   password?: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  ciNumber?: string; // Carnet de Identidad boliviano (ej: 8945612 SC)
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  homeAddress?: string; // Dirección de domicilio en Bolivia
+
   @Column({
     type: 'enum',
     enum: VehicleType,
@@ -46,12 +52,12 @@ export class Driver {
   vehiclePlate: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
-  avatarUrl?: string;
+  avatarUrl?: string; // Selfie facial tomado con cámara
 
   @Column({
     type: 'enum',
     enum: DriverVerificationStatus,
-    default: DriverVerificationStatus.VERIFIED, // Verified by default for test accounts, configurable
+    default: DriverVerificationStatus.PENDING,
   })
   verificationStatus: DriverVerificationStatus;
 
@@ -66,6 +72,12 @@ export class Driver {
 
   @Column({ type: 'text', nullable: true })
   vehiclePhotoUrl?: string;
+
+  @Column({ type: 'text', nullable: true })
+  contractSignatureSvg?: string; // Firma digital táctil capturada en pantalla
+
+  @Column({ type: 'timestamptz', nullable: true })
+  contractAcceptedAt?: Date;
 
   @Column({ type: 'boolean', default: false })
   isOnline: boolean;
