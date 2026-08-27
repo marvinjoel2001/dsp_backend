@@ -17,7 +17,7 @@ export class DriverWalletTransaction {
   amount: number;
 
   @Column({ type: 'varchar', length: 50 })
-  type: 'PAYOUT' | 'COMMISSION' | 'WITHDRAWAL' | 'BONUS';
+  type: 'PAYOUT' | 'COMMISSION' | 'WITHDRAWAL' | 'BONUS' | 'PENALTY' | 'ADJUSTMENT';
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   referenceId: string;

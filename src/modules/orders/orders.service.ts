@@ -272,4 +272,135 @@ export class OrdersService {
       driver,
     };
   }
+
+  async forceOrderStatus(
+    orderId: string,
+    dto: {
+      status: OrderStatus;
+      reason: string;
+      creditDriver?: boolean;
+      proofPhotoUrl?: string;
+      signatureSvg?: string;
+    },
+  ) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+
+    const previousStatus = order.status;
+    order.status = dto.status;
+
+    if (dto.proofPhotoUrl) order.proofPhotoUrl = dto.proofPhotoUrl;
+    if (dto.signatureSvg) order.signatureSvg = dto.signatureSvg;
+
+    // Si se fuerza a DELIVERED y se desea acreditar al conductor
+    if (dto.status === OrderStatus.DELIVERED && order.driverId && dto.creditDriver !== false) {
+      const driver = await this.driverRepo.findOne({ where: { id: order.driverId } });
+      if (driver) {
+        driver.walletBalance = Number(driver.walletBalance) + Number(order.driverPayout);
+        await this.driverRepo.save(driver);
+
+        await this.walletTxRepo.save(
+          this.walletTxRepo.create({
+            driverId: driver.id,
+            amount: order.driverPayout,
+            type: 'PAYOUT',
+            referenceId: order.id,
+            description: `Pago forzado por soporte/admin por entrega #${order.id}`,
+          }),
+        );
+      }
+    }
+
+    const saved = await this.orderRepo.save(order);
+
+    // Auditoría inmutable con motivo del operador
+    await this.logRepo.save(
+      this.logRepo.create({
+        orderId: saved.id,
+        previousStatus,
+        newStatus: dto.status,
+        changedBy: 'ADMIN',
+        metadata: {
+          forced: true,
+          reason: dto.reason,
+          proofPhotoUrl: dto.proofPhotoUrl,
+          creditDriver: dto.creditDriver,
+        },
+      }),
+    );
+
+    // Reenviar Webhook a la tienda
+    await this.resendWebhook(order.id);
+
+    return saved;
+  }
+
+  async resendWebhook(orderId: string) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+
+    const eventNameMap: Record<string, string> = {
+      [OrderStatus.CREATED]: 'order.created',
+      [OrderStatus.SEARCHING_DRIVER]: 'order.created',
+      [OrderStatus.ASSIGNED]: 'order.assigned',
+      [OrderStatus.ARRIVED_AT_PICKUP]: 'order.arrived_pickup',
+      [OrderStatus.IN_TRANSIT]: 'order.in_transit',
+      [OrderStatus.DELIVERED]: 'order.delivered',
+      [OrderStatus.CANCELLED]: 'order.cancelled',
+    };
+
+    const webhookEvent = eventNameMap[order.status] || 'order.updated';
+
+    let driverInfo: any = undefined;
+    if (order.driverId) {
+      const driver = await this.driverRepo.findOne({ where: { id: order.driverId } });
+      if (driver) {
+        driverInfo = {
+          id: driver.id,
+          name: driver.fullName,
+          phone: driver.phone,
+          vehicle_type: driver.vehicleType,
+          vehicle_plate: driver.vehiclePlate,
+        };
+      }
+    }
+
+    return this.webhooksService.enqueueWebhookEvent(order.tenantId, order.id, webhookEvent, {
+      order_id: order.id,
+      merchant_reference: order.merchantReference,
+      status: order.status,
+      driver: driverInfo,
+      tracking_url: `https://dsp.openplatform.com/track/${order.trackingToken}`,
+      proof_photo_url: order.proofPhotoUrl,
+    });
+  }
+
+  async getStuckOrders() {
+    const now = new Date();
+    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    const fortyMinutesAgo = new Date(now.getTime() - 40 * 60 * 1000);
+
+    const searchingStuck = await this.orderRepo
+      .createQueryBuilder('o')
+      .where('o.status = :s1 AND o.createdAt <= :limit', {
+        s1: OrderStatus.SEARCHING_DRIVER,
+        limit: tenMinutesAgo,
+      })
+      .getMany();
+
+    const transitStuck = await this.orderRepo
+      .createQueryBuilder('o')
+      .where('(o.status = :s2 OR o.status = :s3) AND o.updatedAt <= :limit', {
+        s2: OrderStatus.ASSIGNED,
+        s3: OrderStatus.IN_TRANSIT,
+        limit: fortyMinutesAgo,
+      })
+      .getMany();
+
+    return {
+      searchingStuck,
+      transitStuck,
+      totalStuck: searchingStuck.length + transitStuck.length,
+    };
+  }
 }

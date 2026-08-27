@@ -8,6 +8,8 @@ import {
   Query,
   UseGuards,
   UseInterceptors,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -95,6 +97,45 @@ export class OrdersController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateOrderStatus(id, dto, 'DRIVER');
+  }
+
+  @Get('alerts/stuck')
+  @ApiOperation({
+    summary: 'Detectar órdenes colgadas o con demoras críticas (Soporte Operativo)',
+    description: 'Devuelve órdenes en búsqueda prolongada (+10 min) o en tránsito sin reportes (+40 min).',
+  })
+  async getStuckOrders() {
+    return this.ordersService.getStuckOrders();
+  }
+
+  @Post(':id/force-status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Forzar estado de una orden manualmente (Marcar Completada, Cancelar, etc.)',
+    description: 'Permite a los operadores resolver pedidos atascados, registrar motivo y opcionalmente acreditar fondos al conductor.',
+  })
+  async forceStatus(
+    @Param('id') id: string,
+    @Body()
+    dto: {
+      status: OrderStatus;
+      reason: string;
+      creditDriver?: boolean;
+      proofPhotoUrl?: string;
+      signatureSvg?: string;
+    },
+  ) {
+    return this.ordersService.forceOrderStatus(id, dto);
+  }
+
+  @Post(':id/resend-webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reenviar Webhook con comprobante POD al comercio',
+    description: 'Permite reemitir el evento a la tienda asociada en caso de fallos de recepción o reintentos solicitados.',
+  })
+  async resendWebhook(@Param('id') id: string) {
+    return this.ordersService.resendWebhook(id);
   }
 
   @Get('track/:token')

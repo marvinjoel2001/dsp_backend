@@ -117,8 +117,35 @@ export class DriversService {
 
     return {
       balance: driver.walletBalance,
-      currency: 'USD',
+      currency: 'BOB',
       transactions,
+    };
+  }
+
+  async adjustDriverBalance(
+    driverId: string,
+    dto: {
+      amount: number;
+      type: 'BONUS' | 'PENALTY' | 'PAYOUT';
+      description: string;
+    },
+  ) {
+    const driver = await this.getDriverById(driverId);
+    driver.walletBalance = Number(driver.walletBalance) + Number(dto.amount);
+    await this.driverRepo.save(driver);
+
+    const tx = this.walletTxRepo.create({
+      driverId,
+      amount: Number(dto.amount),
+      type: dto.type || 'BONUS',
+      referenceId: `ADJ-${Date.now().toString().slice(-6)}`,
+      description: dto.description || 'Ajuste manual de tesorería por soporte',
+    });
+    const savedTx = await this.walletTxRepo.save(tx);
+
+    return {
+      driver,
+      transaction: savedTx,
     };
   }
 }

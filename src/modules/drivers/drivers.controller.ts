@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Param, Body } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { DriversService } from './drivers.service';
 import { ToggleOnlineDto } from './dto/update-driver-status.dto';
@@ -100,5 +100,24 @@ export class DriversController {
   @ApiResponse({ status: 200, description: 'Balance e historial de transacciones.' })
   async getDriverWallet(@Param('id') id: string) {
     return this.driversService.getDriverWallet(id);
+  }
+
+  @Post(':id/adjust-balance')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Ajuste manual de saldo o bonificación en la billetera del conductor (Soporte Operativo)',
+    description: 'Permite a los administradores acreditar bonos, compensaciones o realizar ajustes con registro de auditoría inmutable.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID del conductor', example: 'c8716b1e-6240-4b2a-8c01-7faef83151cf' })
+  async adjustDriverBalance(
+    @Param('id') id: string,
+    @Body()
+    dto: {
+      amount: number;
+      type: 'BONUS' | 'PENALTY' | 'PAYOUT';
+      description: string;
+    },
+  ) {
+    return this.driversService.adjustDriverBalance(id, dto);
   }
 }
