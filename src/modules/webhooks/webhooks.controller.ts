@@ -1,17 +1,23 @@
-import { Controller, Get, Post, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiResponse, ApiBody, ApiProperty } from '@nestjs/swagger';
+import { IsDefined, IsNotEmpty, IsString } from 'class-validator';
 import { WebhooksService } from './webhooks.service';
 import { WebhookDeliveryStatus } from './entities/webhook-delivery.entity';
 import { CryptoUtil } from '../../common/utils/crypto.util';
 
 export class SimulateVerifyDto {
   @ApiProperty({ description: 'Payload JSON enviado en el webhook', example: { event: 'order.created', data: { order_id: 'ord_123' } } })
+  @IsDefined()
   payload: any;
 
   @ApiProperty({ description: 'Secreto de webhook del comercio', example: 'whsec_884b2c1e...' })
+  @IsString()
+  @IsNotEmpty()
   secret: string;
 
   @ApiProperty({ description: 'Firma recibida en el encabezado x-dsp-signature', example: 'a1b2c3d4...' })
+  @IsString()
+  @IsNotEmpty()
   signature: string;
 }
 
@@ -36,6 +42,7 @@ export class WebhooksController {
   }
 
   @Post('deliveries/:id/retry')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reencolar manualmente un webhook fallido desde la Dead-Letter Queue',
     description: 'Envía de nuevo el trabajo a la cola BullMQ para reintentar la entrega con backoff exponencial.',
@@ -48,6 +55,7 @@ export class WebhooksController {
   }
 
   @Post('simulate-verify')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Herramienta de depuración: Verificar y calcular firmas HMAC SHA-256',
     description: 'Permite a los desarrolladores comprobar si su implementación de validación de firmas coincide exactamente con la del backend.',

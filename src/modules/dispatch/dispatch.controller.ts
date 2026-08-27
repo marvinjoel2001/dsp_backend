@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param } from '@nestjs/common';
+import { Controller, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { DispatchService } from './dispatch.service';
 import { AcceptOrderDto, ManualAssignDto } from './dto/accept-order.dto';
@@ -9,6 +9,7 @@ export class DispatchController {
   constructor(private readonly dispatchService: DispatchService) {}
 
   @Post('orders/:id/match')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Disparar búsqueda geoespacial de conductores cercanos para un pedido',
     description: 'Ejecuta el algoritmo de proximidad con Redis GEO (radio de 5 km) y bloquea atómicamente la oferta para el candidato.',
@@ -21,6 +22,7 @@ export class DispatchController {
   }
 
   @Post('accept')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Aceptación de oferta de despacho por parte de un repartidor',
     description: 'Asignación atómica del pedido al conductor, liberación de locks de Redis y despacho del Webhook order.assigned.',
@@ -32,6 +34,7 @@ export class DispatchController {
   }
 
   @Post('manual-assign')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Asignación manual de pedido por parte del despachador o administrador',
     description: 'Permite a un despachador anular la búsqueda automática y asignar directamente un repartidor específico.',
