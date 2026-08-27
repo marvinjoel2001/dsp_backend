@@ -12,12 +12,15 @@ import { TrackingModule } from './modules/tracking/tracking.module';
 import { DispatchModule } from './modules/dispatch/dispatch.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { DriversModule } from './modules/drivers/drivers.module';
+import { SettlementsModule } from './modules/settlements/settlements.module';
 import { SeedModule } from './modules/seed/seed.module';
 
 // Entities
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { Driver } from './modules/drivers/entities/driver.entity';
 import { DriverWalletTransaction } from './modules/drivers/entities/driver-wallet-transaction.entity';
+import { DriverWithdrawal } from './modules/settlements/entities/driver-withdrawal.entity';
+import { MerchantSettlement } from './modules/settlements/entities/merchant-settlement.entity';
 import { Quote } from './modules/quotes/entities/quote.entity';
 import { DeliveryOrder } from './modules/orders/entities/order.entity';
 import { OrderStatusLog } from './modules/orders/entities/order-status-log.entity';
@@ -62,6 +65,8 @@ import { AppController } from './app.controller';
             Tenant,
             Driver,
             DriverWalletTransaction,
+            DriverWithdrawal,
+            MerchantSettlement,
             Quote,
             DeliveryOrder,
             OrderStatusLog,
@@ -120,6 +125,7 @@ import { AppController } from './app.controller';
     DispatchModule,
     WebhooksModule,
     DriversModule,
+    SettlementsModule,
     SeedModule,
   ],
   controllers: [AppController],
