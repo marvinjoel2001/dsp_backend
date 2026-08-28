@@ -73,7 +73,7 @@ describe('OrdersController', () => {
 
       const result = await controller.getAllOrders(OrderStatus.CREATED, 'tenant-1');
       expect(result).toEqual(expectedOrders);
-      expect(service.getAllOrders).toHaveBeenCalledWith(OrderStatus.CREATED, 'tenant-1');
+      expect(service.getAllOrders).toHaveBeenCalledWith(OrderStatus.CREATED, 'tenant-1', undefined);
     });
   });
 
