@@ -23,6 +23,9 @@ export class Driver {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  dspPartnerId?: string;
+
   @Column({ type: 'varchar', length: 255 })
   fullName: string;
 

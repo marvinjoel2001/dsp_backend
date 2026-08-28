@@ -4,6 +4,10 @@ import { DriversService } from './drivers.service';
 import { ToggleOnlineDto } from './dto/update-driver-status.dto';
 import { DriverVerificationStatus } from './entities/driver.entity';
 
+import { Query, Req } from '@nestjs/common';
+import { ApiQuery } from '@nestjs/swagger';
+import { CreateDriverAdminDto } from './dto/create-driver-admin.dto';
+
 @ApiTags('Drivers (Conductores y Flota)')
 @Controller('v1/drivers')
 export class DriversController {
@@ -11,12 +15,25 @@ export class DriversController {
 
   @Get()
   @ApiOperation({
-    summary: 'Listar todos los conductores registrados en la flota',
+    summary: 'Listar todos los conductores registrados en la flota (soporta filtro por asociación DSP)',
     description: 'Obtiene el listado completo de repartidores, su estado online/offline, vehículo y calificación.',
   })
+  @ApiQuery({ name: 'dspPartnerId', required: false, description: 'UUID de la asociación o partner DSP' })
   @ApiResponse({ status: 200, description: 'Lista de conductores.' })
-  async getAllDrivers() {
-    return this.driversService.getAllDrivers();
+  async getAllDrivers(@Query('dspPartnerId') dspPartnerId?: string) {
+    return this.driversService.getAllDrivers(dspPartnerId);
+  }
+
+  @Post()
+  @ApiOperation({
+    summary: 'Registrar nuevo conductor directamente desde el panel de administración',
+    description: 'Permite al Super Admin o a una Asociación de Motos crear y activar inmediatamente un nuevo repartidor.',
+  })
+  @ApiResponse({ status: 201, description: 'Conductor registrado exitosamente.' })
+  async createDriver(@Body() dto: CreateDriverAdminDto, @Req() req: any) {
+    // Si la sesión es de un DSP externo, forzar la asignación a su ID
+    const forcedDspId = req.user?.role === 'DSP_EXTERNAL' ? req.user?.dspPartnerId : undefined;
+    return this.driversService.createDriverFromAdmin(dto, forcedDspId);
   }
 
   @Get(':id')

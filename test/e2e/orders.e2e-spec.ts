@@ -155,7 +155,7 @@ describe('Orders API (e2e)', () => {
         .expect(200);
 
       expect(res.body).toEqual(list);
-      expect(mockOrdersService.getAllOrders).toHaveBeenCalledWith(OrderStatus.CREATED, 'tenant-100');
+      expect(mockOrdersService.getAllOrders).toHaveBeenCalledWith(OrderStatus.CREATED, 'tenant-100', undefined);
     });
   });
 

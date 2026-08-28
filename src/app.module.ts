@@ -15,6 +15,8 @@ import { DriversModule } from './modules/drivers/drivers.module';
 import { SettlementsModule } from './modules/settlements/settlements.module';
 import { SeedModule } from './modules/seed/seed.module';
 
+import { DspPartnersModule } from './modules/dsp-partners/dsp-partners.module';
+
 // Entities
 import { Tenant } from './modules/tenants/entities/tenant.entity';
 import { Driver } from './modules/drivers/entities/driver.entity';
@@ -25,6 +27,7 @@ import { Quote } from './modules/quotes/entities/quote.entity';
 import { DeliveryOrder } from './modules/orders/entities/order.entity';
 import { OrderStatusLog } from './modules/orders/entities/order-status-log.entity';
 import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.entity';
+import { DspPartner } from './modules/dsp-partners/entities/dsp-partner.entity';
 
 import { AppController } from './app.controller';
 
@@ -71,6 +74,7 @@ import { AppController } from './app.controller';
             DeliveryOrder,
             OrderStatusLog,
             WebhookDelivery,
+            DspPartner,
           ],
           synchronize: configService.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
           logging: configService.get<string>('DB_LOGGING', 'false') === 'true',
@@ -127,6 +131,7 @@ import { AppController } from './app.controller';
     DriversModule,
     SettlementsModule,
     SeedModule,
+    DspPartnersModule,
   ],
   controllers: [AppController],
 })

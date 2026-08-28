@@ -214,11 +214,92 @@ export class OrdersService {
     return saved;
   }
 
-  async getAllOrders(status?: OrderStatus, tenantId?: string) {
+  async getAllOrders(status?: OrderStatus, tenantId?: string, delegatedDspId?: string) {
     const query = this.orderRepo.createQueryBuilder('order').orderBy('order.createdAt', 'DESC');
     if (status) query.andWhere('order.status = :status', { status });
     if (tenantId) query.andWhere('order.tenantId = :tenantId', { tenantId });
+    if (delegatedDspId) query.andWhere('order.delegatedDspId = :delegatedDspId', { delegatedDspId });
     return query.getMany();
+  }
+
+  async delegateOrderToDsp(orderId: string, dspPartnerId: string, dspPayout?: number) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+
+    order.delegatedDspId = dspPartnerId;
+    order.dspStatus = 'OFFERED';
+    order.delegatedAt = new Date();
+    if (dspPayout !== undefined) {
+      order.dspPayout = dspPayout;
+    }
+
+    const saved = await this.orderRepo.save(order);
+
+    await this.logRepo.save(
+      this.logRepo.create({
+        orderId: order.id,
+        previousStatus: order.status,
+        newStatus: order.status,
+        changedBy: 'ADMIN',
+        metadata: { reason: `Orden delegada a la Asociación/DSP #${dspPartnerId}` },
+      }),
+    );
+
+    return saved;
+  }
+
+  async dspAcceptOrder(orderId: string, dspPartnerId: string) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+    if (order.delegatedDspId && order.delegatedDspId !== dspPartnerId) {
+      throw new BadRequestException('Esta orden no está delegada a tu asociación');
+    }
+
+    order.dspStatus = 'ACCEPTED';
+    const saved = await this.orderRepo.save(order);
+
+    await this.logRepo.save(
+      this.logRepo.create({
+        orderId: order.id,
+        previousStatus: order.status,
+        newStatus: order.status,
+        changedBy: 'ADMIN',
+        metadata: { reason: `Orden aceptada por la Asociación/DSP` },
+      }),
+    );
+
+    return saved;
+  }
+
+  async dspAssignDriver(orderId: string, dspPartnerId: string, driverId: string) {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+    if (order.delegatedDspId && order.delegatedDspId !== dspPartnerId) {
+      throw new BadRequestException('Esta orden no está delegada a tu asociación');
+    }
+
+    const driver = await this.driverRepo.findOne({ where: { id: driverId } });
+    if (!driver || !driver.isActive) {
+      throw new BadRequestException('El conductor no es válido o está inactivo');
+    }
+
+    const previousStatus = order.status;
+    order.driverId = driver.id;
+    order.status = OrderStatus.ASSIGNED;
+    order.dspStatus = 'ASSIGNED';
+    const saved = await this.orderRepo.save(order);
+
+    await this.logRepo.save(
+      this.logRepo.create({
+        orderId: order.id,
+        previousStatus,
+        newStatus: OrderStatus.ASSIGNED,
+        changedBy: 'ADMIN',
+        metadata: { reason: `Asignado por la Asociación/DSP a ${driver.fullName}` },
+      }),
+    );
+
+    return saved;
   }
 
   async getOrderById(id: string) {

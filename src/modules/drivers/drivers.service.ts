@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Driver, DriverVerificationStatus } from './entities/driver.entity';
+import * as bcrypt from 'bcrypt';
+import { Driver, DriverVerificationStatus, VehicleType } from './entities/driver.entity';
 import { DriverWalletTransaction } from './entities/driver-wallet-transaction.entity';
 import { DeliveryOrder, OrderStatus } from '../orders/entities/order.entity';
 import { TrackingService } from '../tracking/tracking.service';
+import { CreateDriverAdminDto } from './dto/create-driver-admin.dto';
 
 @Injectable()
 export class DriversService {
@@ -18,8 +20,50 @@ export class DriversService {
     private readonly trackingService: TrackingService,
   ) {}
 
-  async getAllDrivers() {
-    return this.driverRepo.find({ order: { createdAt: 'DESC' } });
+  async getAllDrivers(dspPartnerId?: string) {
+    if (dspPartnerId) {
+      return this.driverRepo.find({
+        where: { dspPartnerId },
+        order: { isOnline: 'DESC', createdAt: 'DESC' },
+      });
+    }
+    return this.driverRepo.find({ order: { isOnline: 'DESC', createdAt: 'DESC' } });
+  }
+
+  async createDriverFromAdmin(dto: CreateDriverAdminDto, forcedDspPartnerId?: string) {
+    const cleanPhone = dto.phone.trim();
+    const cleanEmail = dto.email.trim().toLowerCase();
+
+    const existing = await this.driverRepo.findOne({
+      where: [{ email: cleanEmail }, { phone: cleanPhone }],
+    });
+    if (existing) {
+      throw new ConflictException('Ya existe un conductor registrado con este correo o teléfono.');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password || '123456', 10);
+    const assignedDspId = forcedDspPartnerId || dto.dspPartnerId || null;
+
+    const driver = this.driverRepo.create({
+      fullName: dto.fullName.trim(),
+      phone: cleanPhone,
+      email: cleanEmail,
+      password: hashedPassword,
+      ciNumber: dto.ciNumber?.trim() || null,
+      homeAddress: dto.homeAddress?.trim() || null,
+      vehicleType: dto.vehicleType || VehicleType.MOTORCYCLE,
+      vehiclePlate: dto.vehiclePlate?.trim().toUpperCase() || 'S/P',
+      dspPartnerId: assignedDspId,
+      verificationStatus: DriverVerificationStatus.VERIFIED,
+      isOnline: false,
+      isActive: true,
+      rating: 5.0,
+      walletBalance: 0.0,
+    });
+
+    const saved = await this.driverRepo.save(driver);
+    const { password, ...data } = saved;
+    return data;
   }
 
   async getDriverById(id: string) {

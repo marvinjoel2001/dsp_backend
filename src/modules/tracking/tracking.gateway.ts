@@ -93,4 +93,50 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
       return { unsubscribed: true };
     }
   }
+
+  /**
+   * Conductor se une a su canal privado y al canal de conductores en línea
+   */
+  @SubscribeMessage('driver:join')
+  handleDriverJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { driverId: string },
+  ) {
+    if (data?.driverId) {
+      client.join(`driver:${data.driverId}`);
+      client.join('drivers:online');
+      this.logger.log(`Conductor ${data.driverId} suscrito a canal privado y drivers:online`);
+      return { joined: true, driverId: data.driverId };
+    }
+  }
+
+  @SubscribeMessage('driver:leave')
+  handleDriverLeave(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { driverId: string },
+  ) {
+    if (data?.driverId) {
+      client.leave(`driver:${data.driverId}`);
+      client.leave('drivers:online');
+      return { left: true };
+    }
+  }
+
+  /**
+   * Envía oferta de orden a un conductor específico y al canal de conductores activos
+   */
+  emitOrderOffer(driverId: string, orderPayload: any) {
+    if (!this.server) return;
+    this.server.to(`driver:${driverId}`).emit('order:offer', orderPayload);
+    this.server.to('drivers:online').emit('order:broadcast', orderPayload);
+  }
+
+  /**
+   * Emisión global de nueva orden disponible
+   */
+  emitOrderBroadcast(orderPayload: any) {
+    if (!this.server) return;
+    this.server.to('drivers:online').emit('order:broadcast', orderPayload);
+    this.server.emit('order:new', orderPayload);
+  }
 }

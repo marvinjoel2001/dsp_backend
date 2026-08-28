@@ -7,10 +7,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { Driver } from '../drivers/entities/driver.entity';
+import { DspPartner } from '../dsp-partners/entities/dsp-partner.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Driver]),
+    TypeOrmModule.forFeature([Driver, DspPartner]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

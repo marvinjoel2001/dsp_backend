@@ -5,6 +5,7 @@ import { Tenant } from '../tenants/entities/tenant.entity';
 import { Driver, VehicleType, DriverVerificationStatus } from '../drivers/entities/driver.entity';
 import { DeliveryOrder, OrderStatus } from '../orders/entities/order.entity';
 import { WebhookDelivery, WebhookDeliveryStatus } from '../webhooks/entities/webhook-delivery.entity';
+import { DspPartner } from '../dsp-partners/entities/dsp-partner.entity';
 import { CryptoUtil } from '../../common/utils/crypto.util';
 
 import * as bcrypt from 'bcrypt';
@@ -22,6 +23,8 @@ export class SeedService implements OnApplicationBootstrap {
     private readonly orderRepo: Repository<DeliveryOrder>,
     @InjectRepository(WebhookDelivery)
     private readonly webhookRepo: Repository<WebhookDelivery>,
+    @InjectRepository(DspPartner)
+    private readonly dspPartnerRepo: Repository<DspPartner>,
   ) {}
 
   async onApplicationBootstrap() {
@@ -57,7 +60,27 @@ export class SeedService implements OnApplicationBootstrap {
         this.logger.log(`✅ Tenant sembrado: ${tenant.name} (${tenant.id})`);
       }
 
-      // 2. Sembrar Conductor por defecto
+      // 2. Sembrar Asociación de Motos / DSP Partner por defecto
+      const defaultDspId = 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d';
+      let dsp = await this.dspPartnerRepo.findOne({ where: { id: defaultDspId } });
+      if (!dsp) {
+        dsp = this.dspPartnerRepo.create({
+          id: defaultDspId,
+          name: 'Asociación Motos Los Rápidos',
+          code: 'DSP-RAPIDOS',
+          email: 'motos@dsp.com',
+          password: defaultPassword,
+          contactName: 'Don Carlos Mendoza',
+          contactPhone: '+591 71234567',
+          city: 'Santa Cruz',
+          payoutPerOrder: 5.0,
+          isActive: true,
+        });
+        await this.dspPartnerRepo.save(dsp);
+        this.logger.log(`✅ Asociación DSP sembrada: ${dsp.name} (motos@dsp.com / admin123)`);
+      }
+
+      // 3. Sembrar Conductor por defecto
       const defaultDriverId = 'c8716b1e-6240-4b2a-8c01-7faef83151cf';
       let driver = await this.driverRepo.findOne({ where: { id: defaultDriverId } });
       if (!driver) {
@@ -76,6 +99,7 @@ export class SeedService implements OnApplicationBootstrap {
           currentLat: -17.7833,
           currentLng: -63.1821,
           rating: 4.9,
+          dspPartnerId: defaultDspId,
         });
         await this.driverRepo.save(driver);
         this.logger.log(`✅ Conductor sembrado: ${driver.fullName} (${driver.id})`);

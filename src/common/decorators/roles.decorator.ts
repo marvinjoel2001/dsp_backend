@@ -4,6 +4,7 @@ export enum UserRole {
   ADMIN = 'ADMIN',
   MERCHANT = 'MERCHANT',
   DRIVER = 'DRIVER',
+  DSP_EXTERNAL = 'DSP_EXTERNAL',
 }
 
 export const ROLES_KEY = 'roles';

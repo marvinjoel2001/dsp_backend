@@ -12,6 +12,7 @@ import { WebhooksService } from '../webhooks/webhooks.service';
 import { DeliveryOrder, OrderStatus } from '../orders/entities/order.entity';
 import { OrderStatusLog } from '../orders/entities/order-status-log.entity';
 import { Driver } from '../drivers/entities/driver.entity';
+import { TrackingGateway } from '../tracking/tracking.gateway';
 
 @Injectable()
 export class DispatchService {
@@ -25,6 +26,7 @@ export class DispatchService {
     @InjectRepository(Driver)
     private readonly driverRepo: Repository<Driver>,
     private readonly trackingService: TrackingService,
+    private readonly trackingGateway: TrackingGateway,
     private readonly webhooksService: WebhooksService,
   ) {}
 
@@ -51,6 +53,8 @@ export class DispatchService {
     this.logger.log(`Se encontraron ${candidates.length} conductores en línea dentro de 5km para la orden ${orderId}`);
 
     if (candidates.length === 0) {
+      // Si no hay candidatos exclusivos por GPS, emitir como orden disponible general
+      this.trackingGateway.emitOrderBroadcast(order);
       return { matched: false, candidatesCount: 0 };
     }
 
@@ -62,6 +66,9 @@ export class DispatchService {
 
     if (acquired) {
       this.logger.log(`Orden ${orderId} ofertada al conductor ${topCandidate.driverId} (bloqueo atómico 30s)`);
+      this.trackingGateway.emitOrderOffer(topCandidate.driverId, order);
+    } else {
+      this.trackingGateway.emitOrderBroadcast(order);
     }
 
     return { matched: true, candidatesCount: candidates.length };

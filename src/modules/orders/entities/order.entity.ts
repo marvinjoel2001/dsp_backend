@@ -33,6 +33,18 @@ export class DeliveryOrder {
   @Column({ type: 'varchar', length: 100, nullable: true })
   merchantReference: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  delegatedDspId?: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  dspStatus?: string; // 'OFFERED' | 'ACCEPTED' | 'ASSIGNED' | 'REJECTED'
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  dspPayout?: number;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  delegatedAt?: Date;
+
   @Column({
     type: 'enum',
     enum: OrderStatus,
