@@ -2,6 +2,7 @@
 dist
 build
 coverage
+*.tsbuildinfo
 
 # Dependencies
 node_modules
