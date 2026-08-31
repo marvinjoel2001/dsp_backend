@@ -72,14 +72,49 @@ export class DriversService {
     return driver;
   }
 
-  async updateProfile(id: string, data: Partial<Driver>) {
+  async updateProfile(id: string, data: any) {
     const driver = await this.getDriverById(id);
-    if (data.fullName) driver.fullName = data.fullName;
-    if (data.phone) driver.phone = data.phone;
-    if (data.vehicleType) driver.vehicleType = data.vehicleType;
-    if (data.vehiclePlate) driver.vehiclePlate = data.vehiclePlate;
-    if (data.avatarUrl) driver.avatarUrl = data.avatarUrl;
-    return this.driverRepo.save(driver);
+    if (data.fullName !== undefined) driver.fullName = data.fullName.trim();
+    if (data.phone !== undefined) driver.phone = data.phone.trim();
+    if (data.email !== undefined) driver.email = data.email.trim().toLowerCase();
+    if (data.ciNumber !== undefined) driver.ciNumber = data.ciNumber ? data.ciNumber.trim() : null;
+    if (data.homeAddress !== undefined) driver.homeAddress = data.homeAddress ? data.homeAddress.trim() : null;
+    if (data.vehicleType !== undefined) driver.vehicleType = data.vehicleType;
+    if (data.vehiclePlate !== undefined) driver.vehiclePlate = data.vehiclePlate ? data.vehiclePlate.trim().toUpperCase() : '';
+    if (data.avatarUrl !== undefined) driver.avatarUrl = data.avatarUrl;
+    if (data.dspPartnerId !== undefined) driver.dspPartnerId = data.dspPartnerId || null;
+    if (data.password) {
+      driver.password = await bcrypt.hash(data.password, 10);
+    }
+    const saved = await this.driverRepo.save(driver);
+    const { password, ...safeData } = saved;
+    return safeData;
+  }
+
+  async toggleActiveStatus(id: string) {
+    const driver = await this.getDriverById(id);
+    driver.isActive = !driver.isActive;
+    // Si se bloquea / desactiva, forzarlo a offline
+    if (!driver.isActive) {
+      driver.isOnline = false;
+      await this.trackingService.removeDriverLocation(id);
+    }
+    const saved = await this.driverRepo.save(driver);
+    const { password, ...safeData } = saved;
+    return safeData;
+  }
+
+  async deleteDriver(id: string) {
+    const driver = await this.getDriverById(id);
+    // Desvincular órdenes activas o históricas
+    await this.orderRepo.update({ driverId: id }, { driverId: undefined });
+    // Limpiar transacciones de billetera
+    await this.walletTxRepo.delete({ driverId: id });
+    // Retirar de Redis si estuviera en línea
+    await this.trackingService.removeDriverLocation(id);
+    // Eliminar registro
+    await this.driverRepo.delete(id);
+    return { success: true, message: `Conductor ${driver.fullName} eliminado exitosamente.` };
   }
 
   async uploadDocuments(id: string, docs: {

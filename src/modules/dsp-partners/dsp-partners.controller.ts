@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -50,6 +51,13 @@ export class DspPartnersController {
   @ApiOperation({ summary: 'Activar o suspender una asociación de motos' })
   async toggleActive(@Param('id') id: string) {
     return this.dspPartnersService.toggleActive(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar asociación de motos o partner DSP' })
+  @ApiParam({ name: 'id', description: 'UUID de la asociación' })
+  async delete(@Param('id') id: string) {
+    return this.dspPartnersService.delete(id);
   }
 
   @Get(':id/drivers')

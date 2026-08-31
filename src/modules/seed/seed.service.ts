@@ -80,11 +80,12 @@ export class SeedService implements OnApplicationBootstrap {
         this.logger.log(`✅ Asociación DSP sembrada: ${dsp.name} (motos@dsp.com / admin123)`);
       }
 
-      // 3. Sembrar Conductor por defecto
-      const defaultDriverId = 'c8716b1e-6240-4b2a-8c01-7faef83151cf';
-      let driver = await this.driverRepo.findOne({ where: { id: defaultDriverId } });
-      if (!driver) {
-        driver = this.driverRepo.create({
+      // 3. Sembrar Conductor únicamente si la tabla de conductores está vacía
+      const driversCount = await this.driverRepo.count();
+      let defaultDriver: Driver | null = null;
+      if (driversCount === 0) {
+        const defaultDriverId = 'c8716b1e-6240-4b2a-8c01-7faef83151cf';
+        defaultDriver = this.driverRepo.create({
           id: defaultDriverId,
           fullName: 'Alex Repartidor',
           phone: '+591 70001234',
@@ -101,41 +102,19 @@ export class SeedService implements OnApplicationBootstrap {
           rating: 4.9,
           dspPartnerId: defaultDspId,
         });
-        await this.driverRepo.save(driver);
-        this.logger.log(`✅ Conductor sembrado: ${driver.fullName} (${driver.id})`);
+        await this.driverRepo.save(defaultDriver);
+        this.logger.log(`✅ Conductor por defecto sembrado: ${defaultDriver.fullName}`);
+      } else {
+        defaultDriver = await this.driverRepo.findOne({ where: {} });
       }
 
-      // Conductor secundario
-      const driver2Id = 'd9827c2f-7351-4c3b-9d12-8abfe94262de';
-      let driver2 = await this.driverRepo.findOne({ where: { id: driver2Id } });
-      if (!driver2) {
-        driver2 = this.driverRepo.create({
-          id: driver2Id,
-          fullName: 'Carlos E-Bike',
-          phone: '+591 71112233',
-          email: 'carlos@dsp.com',
-          password: defaultPassword,
-          vehicleType: VehicleType.BICYCLE,
-          vehiclePlate: 'E-BIKE-01',
-          isOnline: true,
-          isActive: true,
-          verificationStatus: DriverVerificationStatus.VERIFIED,
-          walletBalance: 85.5,
-          currentLat: -17.778,
-          currentLng: -63.189,
-          rating: 4.8,
-        });
-        await this.driverRepo.save(driver2);
-        this.logger.log(`✅ Conductor 2 sembrado: ${driver2.fullName}`);
-      }
-
-      // 3. Sembrar Órdenes de prueba vinculadas a la App y Admin
+      // 4. Sembrar Órdenes de prueba si no existen
       let order1 = await this.orderRepo.findOne({ where: { id: '434567' } });
       if (!order1) {
         order1 = this.orderRepo.create({
           id: '434567',
           tenantId: tenant.id,
-          driverId: driver.id,
+          driverId: defaultDriver?.id || null,
           merchantReference: 'CHIRINGUITO-001',
           status: OrderStatus.ASSIGNED,
           pickupAddress: 'Restaurante El Chiringuito Central, Calle Charcas #120',
@@ -185,13 +164,13 @@ export class SeedService implements OnApplicationBootstrap {
             order_id: '434567',
             merchant_reference: 'CHIRINGUITO-001',
             status: 'ASSIGNED',
-            driver: {
-              id: driver.id,
-              name: driver.fullName,
-              phone: driver.phone,
-              vehicle_type: driver.vehicleType,
-              vehicle_plate: driver.vehiclePlate,
-            },
+            driver: defaultDriver ? {
+              id: defaultDriver.id,
+              name: defaultDriver.fullName,
+              phone: defaultDriver.phone,
+              vehicle_type: defaultDriver.vehicleType,
+              vehicle_plate: defaultDriver.vehiclePlate,
+            } : null,
             pickup_address: order1.pickupAddress,
             dropoff_address: order1.dropoffAddress,
           },

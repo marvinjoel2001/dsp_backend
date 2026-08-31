@@ -102,6 +102,16 @@ export class DspPartnersService {
     return this.dspPartnerRepo.save(partner);
   }
 
+  async delete(id: string) {
+    const partner = await this.findById(id);
+    // Desvincular conductores de la asociación
+    await this.driverRepo.update({ dspPartnerId: id }, { dspPartnerId: undefined });
+    // Desvincular órdenes delegadas
+    await this.orderRepo.update({ delegatedDspId: id }, { delegatedDspId: undefined });
+    await this.dspPartnerRepo.delete(id);
+    return { success: true, message: `Asociación ${partner.name} eliminada con éxito.` };
+  }
+
   async getDriversByDsp(dspPartnerId: string) {
     return this.driverRepo.find({
       where: { dspPartnerId },

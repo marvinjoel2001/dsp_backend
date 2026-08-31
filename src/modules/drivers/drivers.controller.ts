@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Put, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { DriversService } from './drivers.service';
 import { ToggleOnlineDto } from './dto/update-driver-status.dto';
@@ -54,6 +54,30 @@ export class DriversController {
   })
   async updateProfile(@Param('id') id: string, @Body() data: any) {
     return this.driversService.updateProfile(id, data);
+  }
+
+  @Put(':id')
+  @ApiOperation({
+    summary: 'Actualización administrativa completa del conductor',
+  })
+  async updateDriverAdmin(@Param('id') id: string, @Body() data: any) {
+    return this.driversService.updateProfile(id, data);
+  }
+
+  @Patch(':id/toggle-active')
+  @ApiOperation({
+    summary: 'Bloquear o reactivar cuenta del conductor (Admin)',
+  })
+  async toggleActive(@Param('id') id: string) {
+    return this.driversService.toggleActiveStatus(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Eliminar conductor de la flota permanentemente (Admin)',
+  })
+  async deleteDriver(@Param('id') id: string) {
+    return this.driversService.deleteDriver(id);
   }
 
   @Post(':id/documents')

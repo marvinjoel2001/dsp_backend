@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -71,5 +71,26 @@ export class TenantsController {
   @ApiResponse({ status: 200, description: 'Estado del comercio actualizado.' })
   async toggleStatus(@Param('id') id: string) {
     return this.tenantsService.toggleTenantStatus(id);
+  }
+
+  @Put(':id')
+  @ApiOperation({
+    summary: 'Actualizar datos generales de una tienda o comercio',
+  })
+  @ApiParam({ name: 'id', description: 'UUID del comercio' })
+  async updateTenant(
+    @Param('id') id: string,
+    @Body() dto: { name?: string; email?: string; webhookUrl?: string },
+  ) {
+    return this.tenantsService.updateTenant(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Eliminar tienda o comercio de la plataforma',
+  })
+  @ApiParam({ name: 'id', description: 'UUID del comercio' })
+  async deleteTenant(@Param('id') id: string) {
+    return this.tenantsService.deleteTenant(id);
   }
 }

@@ -84,4 +84,27 @@ export class TenantsService {
     tenant.isActive = !tenant.isActive;
     return this.tenantRepository.save(tenant);
   }
+
+  async updateTenant(id: string, dto: { name?: string; email?: string; webhookUrl?: string }) {
+    const tenant = await this.getTenantById(id);
+    if (dto.name !== undefined) tenant.name = dto.name.trim();
+    if (dto.email !== undefined) {
+      const cleanEmail = dto.email.trim().toLowerCase();
+      if (cleanEmail !== tenant.email) {
+        const existing = await this.tenantRepository.findOne({ where: { email: cleanEmail } });
+        if (existing) {
+          throw new ConflictException('Ya existe otra tienda registrada con este correo.');
+        }
+        tenant.email = cleanEmail;
+      }
+    }
+    if (dto.webhookUrl !== undefined) tenant.webhookUrl = dto.webhookUrl.trim() || null;
+    return this.tenantRepository.save(tenant);
+  }
+
+  async deleteTenant(id: string) {
+    const tenant = await this.getTenantById(id);
+    await this.tenantRepository.delete(id);
+    return { success: true, message: `Tienda ${tenant.name} eliminada con éxito.` };
+  }
 }
