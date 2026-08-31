@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Tarifas y Precios (Pricing & Distance Brackets)')
-@Controller('pricing')
+@Controller('v1/pricing')
 export class PricingController {
   constructor(private readonly pricingService: PricingService) {}
 
