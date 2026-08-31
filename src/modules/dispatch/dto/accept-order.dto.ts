@@ -54,10 +54,10 @@ export class ManualAssignDto {
   orderId: string;
 
   @ApiProperty({
-    description: 'UUID del conductor asignado manualmente',
+    description: 'ID o UUID del conductor asignado manualmente',
     example: 'c8716b1e-6240-4b2a-8c01-7faef83151cf',
   })
-  @IsUUID()
+  @IsString()
   @IsNotEmpty()
   driverId: string;
 }

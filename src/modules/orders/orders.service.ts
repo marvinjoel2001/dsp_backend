@@ -129,6 +129,23 @@ export class OrdersService {
     return savedOrder;
   }
 
+  async createManualOrderAdmin(dto: CreateOrderDto & { tenantId?: string }) {
+    let resolvedTenantId = dto.tenantId;
+
+    if (!resolvedTenantId) {
+      const activeTenant = await this.orderRepo.manager.getRepository('tenants').findOne({
+        where: { isActive: true },
+      });
+      if (activeTenant) {
+        resolvedTenantId = (activeTenant as any).id;
+      } else {
+        throw new BadRequestException('No existe ningún comercio activo registrado.');
+      }
+    }
+
+    return this.createOrder(resolvedTenantId!, dto);
+  }
+
   async updateOrderStatus(
     orderId: string,
     dto: UpdateOrderStatusDto,
@@ -330,6 +347,7 @@ export class OrdersService {
       const d = await this.driverRepo.findOne({ where: { id: order.driverId } });
       if (d) {
         driver = {
+          id: d.id,
           fullName: d.fullName,
           phone: d.phone,
           vehicleType: d.vehicleType,
@@ -417,8 +435,12 @@ export class OrdersService {
       }),
     );
 
-    // Reenviar Webhook a la tienda
-    await this.resendWebhook(order.id);
+    // Reenviar Webhook a la tienda (silencioso si falla la cola o no hay webhook configurado)
+    try {
+      await this.resendWebhook(order.id);
+    } catch (whErr: any) {
+      this.logger.warn(`No se pudo enviar webhook tras forzar estado en orden ${order.id}: ${whErr?.message}`);
+    }
 
     return saved;
   }

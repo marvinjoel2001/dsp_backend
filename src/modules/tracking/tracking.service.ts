@@ -1,5 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Driver } from '../drivers/entities/driver.entity';
 import Redis from 'ioredis';
 
 @Injectable()
@@ -7,7 +10,12 @@ export class TrackingService {
   private readonly logger = new Logger(TrackingService.name);
   private redisClient: Redis;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional()
+    @InjectRepository(Driver)
+    private readonly driverRepo?: Repository<Driver>,
+  ) {
     const redisUrl = this.configService.get<string>('REDIS_URL') || process.env.REDIS_URL;
 
     if (redisUrl) {
@@ -70,6 +78,14 @@ export class TrackingService {
         updatedAt: new Date().toISOString(),
       });
       await this.redisClient.set(`driver:telemetry:${driverId}`, telemetry, 'EX', 60);
+
+      // Sincronizar en base de datos relational para persistencia duradera
+      if (this.driverRepo) {
+        this.driverRepo.update(driverId, {
+          currentLat: lat,
+          currentLng: lng,
+        }).catch((e) => this.logger.warn(`Driver DB coord update defer: ${e.message}`));
+      }
     } catch (err: any) {
       this.logger.error(`Error updating driver GEO: ${err.message}`);
     }

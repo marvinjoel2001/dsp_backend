@@ -57,6 +57,17 @@ export class OrdersController {
     return this.ordersService.createOrder(tenant.id, dto);
   }
 
+  @Post('manual')
+  @ApiOperation({
+    summary: 'Crear orden manual desde el panel de administración central',
+    description: 'Permite al operador de la central despachar pedidos directamente seleccionando los puntos en el mapa.',
+  })
+  async createManualOrder(
+    @Body() body: CreateOrderDto & { tenantId?: string },
+  ) {
+    return this.ordersService.createManualOrderAdmin(body);
+  }
+
   @Get()
   @ApiOperation({
     summary: 'Listar pedidos con filtros opcionales por estado, comercio o asociación DSP',
@@ -113,6 +124,15 @@ export class OrdersController {
     return this.ordersService.dspAssignDriver(id, body.dspPartnerId, body.driverId);
   }
 
+  @Get('alerts/stuck')
+  @ApiOperation({
+    summary: 'Detectar órdenes colgadas o con demoras críticas (Soporte Operativo)',
+    description: 'Devuelve órdenes en búsqueda prolongada (+10 min) o en tránsito sin reportes (+40 min).',
+  })
+  async getStuckOrders() {
+    return this.ordersService.getStuckOrders();
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener detalle completo de un pedido con su registro de auditoría inmutable',
@@ -138,15 +158,6 @@ export class OrdersController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateOrderStatus(id, dto, 'DRIVER');
-  }
-
-  @Get('alerts/stuck')
-  @ApiOperation({
-    summary: 'Detectar órdenes colgadas o con demoras críticas (Soporte Operativo)',
-    description: 'Devuelve órdenes en búsqueda prolongada (+10 min) o en tránsito sin reportes (+40 min).',
-  })
-  async getStuckOrders() {
-    return this.ordersService.getStuckOrders();
   }
 
   @Post(':id/force-status')
