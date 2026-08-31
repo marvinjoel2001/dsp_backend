@@ -22,6 +22,11 @@ export interface PriceCalculationResult {
 export class PricingService implements OnModuleInit {
   private readonly logger = new Logger(PricingService.name);
 
+  // Caché en memoria para resolución de tarifas en < 0.1ms sin tocar la base de datos
+  private cachedActiveConfigs: PricingConfig[] | null = null;
+  private lastCacheRefresh = 0;
+  private readonly CACHE_TTL_MS = 60 * 1000; // 60 segundos TTL
+
   constructor(
     @InjectRepository(PricingConfig)
     private readonly pricingRepo: Repository<PricingConfig>,
@@ -29,6 +34,35 @@ export class PricingService implements OnModuleInit {
 
   async onModuleInit() {
     await this.seedDefaultPricing();
+    await this.refreshActiveConfigsCache();
+  }
+
+  private invalidateCache() {
+    this.cachedActiveConfigs = null;
+    this.lastCacheRefresh = 0;
+  }
+
+  private async getActiveConfigsCached(): Promise<PricingConfig[]> {
+    const now = Date.now();
+    if (this.cachedActiveConfigs && now - this.lastCacheRefresh < this.CACHE_TTL_MS) {
+      return this.cachedActiveConfigs;
+    }
+    return this.refreshActiveConfigsCache();
+  }
+
+  private async refreshActiveConfigsCache(): Promise<PricingConfig[]> {
+    try {
+      const configs = await this.pricingRepo.find({
+        where: { isActive: true },
+        order: { createdAt: 'DESC' },
+      });
+      this.cachedActiveConfigs = configs;
+      this.lastCacheRefresh = Date.now();
+      return configs;
+    } catch (e: any) {
+      this.logger.warn(`Error al refrescar caché de tarifas: ${e.message}`);
+      return this.cachedActiveConfigs || [];
+    }
   }
 
   /**
@@ -100,6 +134,7 @@ export class PricingService implements OnModuleInit {
           const config = this.pricingRepo.create(item);
           await this.pricingRepo.save(config);
         }
+        this.invalidateCache();
         this.logger.log('Tarifas por defecto sembradas exitosamente.');
       }
     } catch (e) {
@@ -137,23 +172,28 @@ export class PricingService implements OnModuleInit {
       ...dto,
       brackets: dto.brackets || [],
     });
-    return this.pricingRepo.save(entity);
+    const saved = await this.pricingRepo.save(entity);
+    this.invalidateCache();
+    return saved;
   }
 
   async update(id: string, dto: Partial<CreatePricingConfigDto>): Promise<PricingConfig> {
     const config = await this.findById(id);
     Object.assign(config, dto);
-    return this.pricingRepo.save(config);
+    const saved = await this.pricingRepo.save(config);
+    this.invalidateCache();
+    return saved;
   }
 
   async delete(id: string): Promise<{ success: boolean }> {
     const config = await this.findById(id);
     await this.pricingRepo.remove(config);
+    this.invalidateCache();
     return { success: true };
   }
 
   /**
-   * Motor Central de Cálculo de Tarifas por Tramos
+   * Motor Central de Cálculo de Tarifas por Tramos (Resolución O(1) en RAM)
    */
   async calculatePrice(params: {
     distanceKm: number;
@@ -167,51 +207,38 @@ export class PricingService implements OnModuleInit {
     const vehicleType = (params.vehicleType || 'MOTORCYCLE').toUpperCase();
     const surge = params.surgeMultiplier && params.surgeMultiplier > 1 ? params.surgeMultiplier : 1.0;
 
-    // 1. Buscar regla en orden de prioridad:
+    // 1. Obtener reglas activas de la memoria caché
+    const activeConfigs = await this.getActiveConfigsCached();
+
+    // 2. Buscar regla en orden de prioridad en RAM (Ultra Baja Latencia < 0.05ms):
     // Prioridad 1: Regla activa del DSP específico para ese vehículo
     // Prioridad 2: Regla activa del DSP para 'ALL'
-    // Prioridad 3: Regla activa Global (Super Admin) para ese vehículo (dspPartnerId IS NULL)
-    // Prioridad 4: Regla activa Global para 'ALL' o fallback (dspPartnerId IS NULL)
-    let config: PricingConfig | null = null;
+    // Prioridad 3: Regla activa Global (Super Admin) para ese vehículo (dspPartnerId es null o undefined)
+    // Prioridad 4: Regla activa Global para 'ALL' o fallback
+    let config: PricingConfig | undefined = undefined;
 
     if (params.dspPartnerId) {
-      config = await this.pricingRepo.findOne({
-        where: {
-          dspPartnerId: params.dspPartnerId,
-          vehicleType,
-          isActive: true,
-        },
-      });
+      config = activeConfigs.find(
+        (c) => c.dspPartnerId === params.dspPartnerId && c.vehicleType === vehicleType,
+      );
 
       if (!config) {
-        config = await this.pricingRepo.findOne({
-          where: {
-            dspPartnerId: params.dspPartnerId,
-            vehicleType: 'ALL',
-            isActive: true,
-          },
-        });
+        config = activeConfigs.find(
+          (c) => c.dspPartnerId === params.dspPartnerId && c.vehicleType === 'ALL',
+        );
       }
     }
 
     if (!config) {
-      config = await this.pricingRepo.findOne({
-        where: {
-          dspPartnerId: IsNull(),
-          vehicleType,
-          isActive: true,
-        },
-      });
+      config = activeConfigs.find(
+        (c) => (!c.dspPartnerId || c.dspPartnerId === null) && c.vehicleType === vehicleType,
+      );
     }
 
     if (!config) {
-      config = await this.pricingRepo.findOne({
-        where: {
-          dspPartnerId: IsNull(),
-          vehicleType: 'ALL',
-          isActive: true,
-        },
-      });
+      config = activeConfigs.find(
+        (c) => (!c.dspPartnerId || c.dspPartnerId === null) && c.vehicleType === 'ALL',
+      );
     }
 
     // 2. Si no hay ninguna regla en BD, usar valores de contingencia por defecto

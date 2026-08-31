@@ -3,13 +3,16 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('quotes')
+@Index(['tenantId', 'createdAt'])
 export class Quote {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @Column({ type: 'uuid' })
   tenantId: string;
 
@@ -52,9 +55,11 @@ export class Quote {
   @Column({ type: 'varchar', length: 10, default: 'BOB' })
   currency: string;
 
+  @Index()
   @Column({ type: 'timestamptz' })
   expiresAt: Date;
 
+  @Index()
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

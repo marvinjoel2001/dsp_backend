@@ -5,9 +5,15 @@ import { QuotesController } from './quotes.controller';
 import { Quote } from './entities/quote.entity';
 import { TenantsModule } from '../tenants/tenants.module';
 import { PricingModule } from '../pricing/pricing.module';
+import { TrackingModule } from '../tracking/tracking.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Quote]), TenantsModule, PricingModule],
+  imports: [
+    TypeOrmModule.forFeature([Quote]),
+    TenantsModule,
+    PricingModule,
+    TrackingModule,
+  ],
   controllers: [QuotesController],
   providers: [QuotesService],
   exports: [QuotesService, TypeOrmModule],

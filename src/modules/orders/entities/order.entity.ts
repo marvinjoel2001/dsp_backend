@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 export enum OrderStatus {
@@ -17,22 +18,28 @@ export enum OrderStatus {
 }
 
 @Entity('delivery_orders')
+@Index(['tenantId', 'createdAt'])
+@Index(['status', 'createdAt'])
 export class DeliveryOrder {
   @PrimaryColumn({ type: 'varchar', length: 64 })
   id: string; // e.g. ord_8f912a7b
 
+  @Index()
   @Column({ type: 'uuid' })
   tenantId: string;
 
+  @Index()
   @Column({ type: 'uuid', nullable: true })
   driverId: string;
 
+  @Index()
   @Column({ type: 'uuid', nullable: true })
   quoteId: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   merchantReference: string;
 
+  @Index()
   @Column({ type: 'uuid', nullable: true })
   delegatedDspId?: string;
 
@@ -48,6 +55,7 @@ export class DeliveryOrder {
   @Column({ type: 'timestamptz', nullable: true })
   delegatedAt?: Date;
 
+  @Index()
   @Column({
     type: 'enum',
     enum: OrderStatus,

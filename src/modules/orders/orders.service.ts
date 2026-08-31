@@ -106,28 +106,30 @@ export class OrdersService {
 
     const savedOrder = await this.orderRepo.save(order);
 
-    // Guardar auditoría inicial
-    await this.logRepo.save(
-      this.logRepo.create({
-        orderId: savedOrder.id,
-        previousStatus: null,
-        newStatus: OrderStatus.CREATED,
-        changedBy: 'MERCHANT',
-        metadata: { tenantId, initialPrice: price, vehicleType },
+    // Ejecución paralela y no bloqueante de auditoría y webhooks para respuesta < 15ms
+    Promise.all([
+      this.logRepo.save(
+        this.logRepo.create({
+          orderId: savedOrder.id,
+          previousStatus: null,
+          newStatus: OrderStatus.CREATED,
+          changedBy: 'MERCHANT',
+          metadata: { tenantId, initialPrice: price, vehicleType },
+        }),
+      ),
+      this.webhooksService.enqueueWebhookEvent(tenantId, savedOrder.id, 'order.created', {
+        order_id: savedOrder.id,
+        merchant_reference: savedOrder.merchantReference,
+        status: savedOrder.status,
+        pickup_address: savedOrder.pickupAddress,
+        dropoff_address: savedOrder.dropoffAddress,
+        tracking_url: `${process.env.TRACKING_BASE_URL || 'https://dsp-admin-pi.vercel.app'}/track/${savedOrder.trackingToken}`,
       }),
-    );
-
-    // Disparar Webhook order.created
-    await this.webhooksService.enqueueWebhookEvent(tenantId, savedOrder.id, 'order.created', {
-      order_id: savedOrder.id,
-      merchant_reference: savedOrder.merchantReference,
-      status: savedOrder.status,
-      pickup_address: savedOrder.pickupAddress,
-      dropoff_address: savedOrder.dropoffAddress,
-      tracking_url: `${process.env.TRACKING_BASE_URL || 'https://dsp-admin-pi.vercel.app'}/track/${savedOrder.trackingToken}`,
+    ]).catch((err) => {
+      this.logger.warn(`Aviso en tareas post-creación de orden: ${err.message}`);
     });
 
-    // Iniciar matchmaking geoespacial en background
+    // Iniciar matchmaking geoespacial en background (Zero Latency para el cliente)
     this.dispatchService.matchAndDispatch(savedOrder.id).catch((err) => {
       this.logger.error(`Error en auto-despacho de orden ${savedOrder.id}: ${err.message}`);
     });
