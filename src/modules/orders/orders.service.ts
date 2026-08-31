@@ -118,7 +118,7 @@ export class OrdersService {
       status: savedOrder.status,
       pickup_address: savedOrder.pickupAddress,
       dropoff_address: savedOrder.dropoffAddress,
-      tracking_url: `https://dsp.openplatform.com/track/${savedOrder.trackingToken}`,
+      tracking_url: `${process.env.TRACKING_BASE_URL || 'https://dsp-admin-pi.vercel.app'}/track/${savedOrder.trackingToken}`,
     });
 
     // Iniciar matchmaking geoespacial en background
@@ -206,7 +206,7 @@ export class OrdersService {
         merchant_reference: order.merchantReference,
         status: order.status,
         driver: driverInfo,
-        tracking_url: `https://dsp.openplatform.com/track/${order.trackingToken}`,
+        tracking_url: `${process.env.TRACKING_BASE_URL || 'https://dsp-admin-pi.vercel.app'}/track/${order.trackingToken}`,
         proof_photo_url: order.proofPhotoUrl,
       });
     }
@@ -320,7 +320,9 @@ export class OrdersService {
   }
 
   async getPublicTracking(trackingToken: string) {
-    const order = await this.orderRepo.findOne({ where: { trackingToken } });
+    const order = await this.orderRepo.findOne({
+      where: [{ trackingToken }, { id: trackingToken }],
+    });
     if (!order) throw new NotFoundException('Información de seguimiento no encontrada');
 
     let driver: Partial<Driver> | null = null;
@@ -349,6 +351,11 @@ export class OrdersService {
       dropoffAddress: order.dropoffAddress,
       dropoffLat: order.dropoffLat,
       dropoffLng: order.dropoffLng,
+      packageNotes: order.packageNotes,
+      price: order.price,
+      trackingToken: order.trackingToken,
+      proofPhotoUrl: order.proofPhotoUrl,
+      signatureSvg: order.signatureSvg,
       createdAt: order.createdAt,
       driver,
     };
@@ -451,7 +458,7 @@ export class OrdersService {
       merchant_reference: order.merchantReference,
       status: order.status,
       driver: driverInfo,
-      tracking_url: `https://dsp.openplatform.com/track/${order.trackingToken}`,
+      tracking_url: `${process.env.TRACKING_BASE_URL || 'https://dsp-admin-pi.vercel.app'}/track/${order.trackingToken}`,
       proof_photo_url: order.proofPhotoUrl,
     });
   }

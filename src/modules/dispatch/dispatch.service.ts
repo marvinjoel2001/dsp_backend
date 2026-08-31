@@ -144,7 +144,7 @@ export class DispatchService {
       },
       pickup_address: order.pickupAddress,
       dropoff_address: order.dropoffAddress,
-      tracking_url: `https://dsp.openplatform.com/track/${order.trackingToken}`,
+      tracking_url: `${process.env.TRACKING_BASE_URL || 'https://dsp-admin-pi.vercel.app'}/track/${order.trackingToken}`,
     });
 
     return {
