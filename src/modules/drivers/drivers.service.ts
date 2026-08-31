@@ -161,6 +161,13 @@ export class DriversService {
     return saved;
   }
 
+  async updateFcmToken(driverId: string, fcmToken: string) {
+    const driver = await this.getDriverById(driverId);
+    driver.fcmToken = fcmToken;
+    await this.driverRepo.save(driver);
+    return { success: true, message: 'FCM Token actualizado correctamente' };
+  }
+
   async getAvailableFeedForDriver(driverId: string) {
     const availableOrders = await this.orderRepo.find({
       where: [

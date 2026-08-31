@@ -49,6 +49,8 @@ export class OrdersService {
     let price = 5.0;
     let driverPayout = 4.0;
     let quoteId: string | null = null;
+    const vehicleType = dto.vehicleType || 'MOTORCYCLE';
+    const delegatedDspId = dto.dspPartnerId || undefined;
 
     if (dto.quoteId) {
       const quote = await this.quotesService.validateQuoteActive(dto.quoteId);
@@ -69,6 +71,8 @@ export class OrdersService {
         dropoffAddress,
         dropoffLat,
         dropoffLng,
+        vehicleType,
+        dspPartnerId: delegatedDspId,
       });
       quoteId = tempQuote.id;
       price = Number(tempQuote.totalPrice);
@@ -86,6 +90,8 @@ export class OrdersService {
       quoteId: quoteId || undefined,
       merchantReference: dto.merchantReference || `REF-${Math.floor(1000 + Math.random() * 9000)}`,
       status: OrderStatus.CREATED,
+      vehicleType,
+      delegatedDspId,
       pickupAddress,
       pickupLat,
       pickupLng,
@@ -107,7 +113,7 @@ export class OrdersService {
         previousStatus: null,
         newStatus: OrderStatus.CREATED,
         changedBy: 'MERCHANT',
-        metadata: { tenantId, initialPrice: price },
+        metadata: { tenantId, initialPrice: price, vehicleType },
       }),
     );
 
@@ -157,13 +163,19 @@ export class OrdersService {
     }
 
     const previousStatus = order.status;
+    
+    // Validación de transición idéntica: Si ya está en ese estado, retornar de forma idempotente
+    if (previousStatus === dto.status) {
+      return order;
+    }
+
     order.status = dto.status;
 
     if (dto.proofPhotoUrl) order.proofPhotoUrl = dto.proofPhotoUrl;
     if (dto.signatureSvg) order.signatureSvg = dto.signatureSvg;
 
-    // Acreditación en la billetera del conductor al entregar
-    if (dto.status === OrderStatus.DELIVERED && order.driverId) {
+    // Acreditación atómica y única en la billetera del conductor al entregar (evita doble pago)
+    if (dto.status === OrderStatus.DELIVERED && previousStatus !== OrderStatus.DELIVERED && order.driverId) {
       const driver = await this.driverRepo.findOne({ where: { id: order.driverId } });
       if (driver) {
         driver.walletBalance = Number(driver.walletBalance) + Number(order.driverPayout);
@@ -398,8 +410,8 @@ export class OrdersService {
     if (dto.proofPhotoUrl) order.proofPhotoUrl = dto.proofPhotoUrl;
     if (dto.signatureSvg) order.signatureSvg = dto.signatureSvg;
 
-    // Si se fuerza a DELIVERED y se desea acreditar al conductor
-    if (dto.status === OrderStatus.DELIVERED && order.driverId && dto.creditDriver !== false) {
+    // Si se fuerza a DELIVERED y se desea acreditar al conductor (solo si no estaba ya entregado)
+    if (dto.status === OrderStatus.DELIVERED && previousStatus !== OrderStatus.DELIVERED && order.driverId && dto.creditDriver !== false) {
       const driver = await this.driverRepo.findOne({ where: { id: order.driverId } });
       if (driver) {
         driver.walletBalance = Number(driver.walletBalance) + Number(order.driverPayout);

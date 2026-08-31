@@ -110,6 +110,16 @@ export class DriversController {
     return this.driversService.toggleOnlineStatus(id, dto.isOnline);
   }
 
+  @Patch(':id/fcm-token')
+  @ApiOperation({
+    summary: 'Registrar o refrescar el FCM Token del dispositivo móvil del conductor',
+    description: 'Permite enviar notificaciones push de alta prioridad que despiertan el teléfono con sonido incluso con la app cerrada.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID del conductor' })
+  async updateFcmToken(@Param('id') id: string, @Body() body: { fcmToken: string }) {
+    return this.driversService.updateFcmToken(id, body.fcmToken);
+  }
+
   @Get(':id/feed')
   @ApiOperation({
     summary: 'Obtener feed de órdenes disponibles para la App del Conductor',

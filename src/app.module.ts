@@ -13,9 +13,9 @@ import { DispatchModule } from './modules/dispatch/dispatch.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { SettlementsModule } from './modules/settlements/settlements.module';
-import { SeedModule } from './modules/seed/seed.module';
-
 import { DspPartnersModule } from './modules/dsp-partners/dsp-partners.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 
 // Entities
 import { Tenant } from './modules/tenants/entities/tenant.entity';
@@ -28,6 +28,7 @@ import { DeliveryOrder } from './modules/orders/entities/order.entity';
 import { OrderStatusLog } from './modules/orders/entities/order-status-log.entity';
 import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.entity';
 import { DspPartner } from './modules/dsp-partners/entities/dsp-partner.entity';
+import { PricingConfig } from './modules/pricing/entities/pricing-config.entity';
 
 import { AppController } from './app.controller';
 
@@ -75,6 +76,7 @@ import { AppController } from './app.controller';
             OrderStatusLog,
             WebhookDelivery,
             DspPartner,
+            PricingConfig,
           ],
           synchronize: configService.get<string>('DB_SYNCHRONIZE', 'true') === 'true',
           logging: configService.get<string>('DB_LOGGING', 'false') === 'true',
@@ -130,8 +132,9 @@ import { AppController } from './app.controller';
     WebhooksModule,
     DriversModule,
     SettlementsModule,
-    SeedModule,
     DspPartnersModule,
+    NotificationsModule,
+    PricingModule,
   ],
   controllers: [AppController],
 })

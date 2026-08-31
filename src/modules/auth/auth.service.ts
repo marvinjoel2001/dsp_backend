@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -17,6 +18,7 @@ export class AuthService {
     @InjectRepository(DspPartner)
     private readonly dspPartnerRepository: Repository<DspPartner>,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async registerDriver(dto: RegisterDriverDto) {
@@ -67,22 +69,25 @@ export class AuthService {
     const identifier = (dto.email || '').trim().toLowerCase();
     const pass = dto.password || '';
 
+    const adminEmail = (this.configService.get<string>('ADMIN_EMAIL') || 'admin@chiringuito.com').toLowerCase();
+    const adminPass = this.configService.get<string>('ADMIN_PASSWORD') || 'admin123';
+
     // Verificación de credenciales de Super Administrador Master
     const isMasterAdmin =
-      (identifier === 'admin' || identifier === 'admin@dsp.com' || identifier === 'admin@chiringuito.com') &&
-      (pass === 'admin' || pass === 'admin123');
+      (identifier === 'admin' || identifier === 'admin@dsp.com' || identifier === adminEmail) &&
+      (pass === 'admin' || pass === adminPass);
 
     if (isMasterAdmin) {
       const token = this.generateToken({
         sub: 'admin-master-id',
-        email: 'admin@chiringuito.com',
+        email: adminEmail,
         fullName: 'Administrador Chiringuito DSP',
         role: UserRole.ADMIN,
       });
       return {
         user: {
           id: 'admin-master-id',
-          email: 'admin@chiringuito.com',
+          email: adminEmail,
           fullName: 'Administrador Chiringuito DSP',
           role: UserRole.ADMIN,
         },
@@ -101,10 +106,11 @@ export class AuthService {
     if (dspPartner && dspPartner.isActive) {
       let isMatch = false;
       if (dspPartner.password && pass) {
-        isMatch = await bcrypt.compare(pass, dspPartner.password);
-      }
-      if (!isMatch && (pass === '123456' || pass === 'admin123' || pass === 'password123')) {
-        isMatch = true;
+        if (dspPartner.password.startsWith('$2b$') || dspPartner.password.startsWith('$2a$')) {
+          isMatch = await bcrypt.compare(pass, dspPartner.password);
+        } else {
+          isMatch = pass === dspPartner.password;
+        }
       }
 
       if (isMatch) {
@@ -132,7 +138,7 @@ export class AuthService {
     // Verificación de conductor (por Teléfono o Correo)
     const cleanPhone = identifier.replace(/[\s\-\(\)\+]/g, '');
 
-    let driver = await this.driverRepository
+    const driver = await this.driverRepository
       .createQueryBuilder('driver')
       .addSelect('driver.password')
       .where('LOWER(driver.email) = :identifier', { identifier })
@@ -142,23 +148,24 @@ export class AuthService {
       })
       .getOne();
 
-    // Fallback para pruebas rápidas / demo si no se encuentra
-    if (!driver && (cleanPhone.includes('7000') || identifier.includes('alex') || identifier.includes('driver'))) {
-      driver = await this.driverRepository.findOne({
-        where: { id: 'c8716b1e-6240-4b2a-8c01-7faef83151cf' },
-      });
-    }
-
     if (!driver) {
       throw new UnauthorizedException('Teléfono o correo no registrado.');
     }
 
-    // Validación de contraseña flexible (soporta contraseña real, PIN o modo demo)
-    if (driver.password && pass && pass !== '123456' && pass !== 'admin123' && pass !== 'password123') {
-      const isMatch = await bcrypt.compare(pass, driver.password);
+    // Validación de contraseña
+    if (driver.password && pass) {
+      let isMatch = false;
+      if (driver.password.startsWith('$2b$') || driver.password.startsWith('$2a$')) {
+        isMatch = await bcrypt.compare(pass, driver.password);
+      } else {
+        isMatch = pass === driver.password;
+      }
+
       if (!isMatch) {
         throw new UnauthorizedException('Contraseña o PIN incorrecto.');
       }
+    } else if (driver.password && !pass) {
+      throw new UnauthorizedException('Contraseña requerida.');
     }
 
     const token = this.generateToken({

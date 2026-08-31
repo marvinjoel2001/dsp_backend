@@ -63,4 +63,23 @@ export class CreateQuoteDto {
   @IsOptional()
   @IsNumber()
   surgeMultiplier?: number;
+
+  @ApiProperty({
+    description: 'Tipo de vehículo solicitado: MOTORCYCLE | BICYCLE | CAR',
+    example: 'MOTORCYCLE',
+    required: false,
+    default: 'MOTORCYCLE',
+  })
+  @IsOptional()
+  @IsString()
+  vehicleType?: string;
+
+  @ApiProperty({
+    description: 'ID de la asociación DSP si la orden está delegada a una flota específica',
+    example: 'd9b2d63d-a412-4c28-98e3-057bf89d3112',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  dspPartnerId?: string;
 }

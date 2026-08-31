@@ -39,6 +39,9 @@ export class DeliveryOrder {
   @Column({ type: 'varchar', length: 50, nullable: true })
   dspStatus?: string; // 'OFFERED' | 'ACCEPTED' | 'ASSIGNED' | 'REJECTED'
 
+  @Column({ type: 'varchar', length: 30, default: 'MOTORCYCLE', nullable: true })
+  vehicleType?: string; // 'MOTORCYCLE' | 'BICYCLE' | 'CAR'
+
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   dspPayout?: number;
 

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Quote } from './entities/quote.entity';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { GeoUtil } from '../../common/utils/geo.util';
+import { PricingService } from '../pricing/pricing.service';
 
 @Injectable()
 export class QuotesService {
@@ -12,6 +13,7 @@ export class QuotesService {
     @InjectRepository(Quote)
     private readonly quoteRepository: Repository<Quote>,
     private readonly configService: ConfigService,
+    private readonly pricingService: PricingService,
   ) {}
 
   async calculateAndCreateQuote(tenantId: string, dto: CreateQuoteDto): Promise<Quote> {
@@ -27,16 +29,14 @@ export class QuotesService {
     }
 
     const durationMinutes = GeoUtil.estimateDurationMinutes(distanceKm);
-
-    const baseFare = parseFloat(this.configService.get<string>('BASE_FARE', '2.50'));
-    const perKmRate = parseFloat(this.configService.get<string>('PER_KM_RATE', '1.20'));
-    const perMinuteRate = parseFloat(this.configService.get<string>('PER_MINUTE_RATE', '0.25'));
     const ttlMinutes = parseInt(this.configService.get<string>('QUOTE_TTL_MINUTES', '15'), 10);
 
-    const pricing = GeoUtil.calculateQuotePrice(distanceKm, durationMinutes, {
-      baseFare,
-      perKmRate,
-      perMinuteRate,
+    // Calcular precio mediante el motor dinámico de tramos de tarifas
+    const pricing = await this.pricingService.calculatePrice({
+      distanceKm,
+      durationMinutes,
+      vehicleType: dto.vehicleType || 'MOTORCYCLE',
+      dspPartnerId: dto.dspPartnerId,
       surgeMultiplier: dto.surgeMultiplier || 1.0,
     });
 
@@ -56,7 +56,7 @@ export class QuotesService {
       surgeMultiplier: pricing.surgeMultiplier,
       totalPrice: pricing.totalPrice,
       driverPayout: pricing.driverPayout,
-      currency: 'USD',
+      currency: 'BOB', // Moneda oficial bolivianos o configurada
       expiresAt,
     });
 

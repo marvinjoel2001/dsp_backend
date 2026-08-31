@@ -49,7 +49,7 @@ export class Quote {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   driverPayout: number;
 
-  @Column({ type: 'varchar', length: 10, default: 'USD' })
+  @Column({ type: 'varchar', length: 10, default: 'BOB' })
   currency: string;
 
   @Column({ type: 'timestamptz' })

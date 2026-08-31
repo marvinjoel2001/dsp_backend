@@ -13,6 +13,7 @@ import { DeliveryOrder, OrderStatus } from '../orders/entities/order.entity';
 import { OrderStatusLog } from '../orders/entities/order-status-log.entity';
 import { Driver } from '../drivers/entities/driver.entity';
 import { TrackingGateway } from '../tracking/tracking.gateway';
+import { PushNotificationsService } from '../notifications/push-notifications.service';
 
 @Injectable()
 export class DispatchService {
@@ -28,6 +29,7 @@ export class DispatchService {
     private readonly trackingService: TrackingService,
     private readonly trackingGateway: TrackingGateway,
     private readonly webhooksService: WebhooksService,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {}
 
   async matchAndDispatch(orderId: string): Promise<{ matched: boolean; candidatesCount: number }> {
@@ -66,7 +68,17 @@ export class DispatchService {
 
     if (acquired) {
       this.logger.log(`Orden ${orderId} ofertada al conductor ${topCandidate.driverId} (bloqueo atómico 30s)`);
+      // 1. Envío por WebSocket de baja latencia (si la app está abierta en primer plano)
       this.trackingGateway.emitOrderOffer(topCandidate.driverId, order);
+
+      // 2. Envío por Push Notification de alta prioridad (despierta el teléfono con sonido si la app está cerrada)
+      this.driverRepo.findOne({ where: { id: topCandidate.driverId } }).then((targetDriver) => {
+        if (targetDriver && targetDriver.fcmToken) {
+          this.pushNotificationsService.sendOrderOfferPush(targetDriver.fcmToken, order).catch((err) => {
+            this.logger.error(`Error enviando push a conductor ${targetDriver.id}: ${err.message}`);
+          });
+        }
+      }).catch(() => {});
     } else {
       this.trackingGateway.emitOrderBroadcast(order);
     }

@@ -88,6 +88,9 @@ export class Driver {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  @Column({ type: 'text', nullable: true })
+  fcmToken?: string;
+
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 5.0 })
   rating: number;
 
