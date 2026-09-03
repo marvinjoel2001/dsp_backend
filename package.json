@@ -13,11 +13,11 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "test:all": "jest --runInBand && jest --config ./test/jest-e2e.json --runInBand"
+    "test:cov": "jest --coverage --runInBand --forceExit",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand --forceExit",
+    "test:all": "jest --runInBand --forceExit && jest --config ./test/jest-e2e.json --runInBand --forceExit"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.2",
